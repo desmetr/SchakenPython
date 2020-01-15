@@ -61,6 +61,7 @@ class Pawn(ChessPiece):
 
 	def possibleMoves(self, r, c, firstMoveBlack=False, firstMoveWhite=False):
 		possibleMoves = []
+		print("(r,c)", r,c)
 		if self.color() == pieceColor.Black:
 			if r + 1 < 8: possibleMoves.append((r + 1, c))
 			if firstMoveBlack:
@@ -69,42 +70,66 @@ class Pawn(ChessPiece):
 			if r - 1 >= 0: possibleMoves.append((r - 1, c))
 			if firstMoveWhite:
 				if r - 2 >= 0: possibleMoves.append((r - 2, c))
-		return possibleMoves
+		print("possibleMoves",possibleMoves)
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
+		return list(set(possibleMoves))
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		path = []
 		ci, cj = curPos
-		ni, nj = newPos
-
-		if self.color() == pieceColor.Black:
-			for i in range(ci + 1, ni + 1):
-				if (i, nj) != curPos:
-					path.append((i, nj))
-		else:
-			for i in range(ci, ni - 1, -1):
-				if (i, nj) != curPos:
-					path.append((i, nj))
-		
+		path = []
+		newPositions = []
 		legalMovesAndNotBlocked = []
+
+		if newPos:
+			newPositions.append(newPos)
+		else:
+			newPositions = self.possibleMoves(ci,cj)
+		for newPos in newPositions:
+			ni, nj = newPos
+			# print(curPos)
+			print(newPos)
+			if self.color() == pieceColor.Black:
+				# print(ci + 1, ni + 1)
+				for i in range(ci + 1, ni + 1):
+					if (i, nj) != curPos:
+						path.append((i, nj))
+			else:
+				# print(ci, ni - 1, '-1')
+				for i in range(ci, ni - 1, -1):
+					if (i, nj) != curPos:
+						path.append((i, nj))
+			
 		for i, move in enumerate(path):
 			r, c = move
 			if isinstance(board[r][c], NoType):
 				legalMovesAndNotBlocked.append(move)
 
-		return legalMovesAndNotBlocked
+		return list(set(legalMovesAndNotBlocked))
 
 	def takeableMoves(self, curPos, newPos, board):
+		temp = []
 		takeableMoves = []
-		r, c = curPos
+		ci, cj = curPos
 		if self.color() == pieceColor.Black:
-			if r + 1 < 8:
-				if c - 1 >= 0: takeableMoves.append((r + 1, c - 1))
-				if c + 1 < 8: takeableMoves.append((r + 1, c + 1))
+			if ci + 1 < 8:
+				if cj - 1 >= 0: temp.append((ci + 1, cj - 1))
+				if cj + 1 < 8: temp.append((ci + 1, cj + 1))
 		else:
-			if r - 1 > 0:
-				if c - 1 >= 0: takeableMoves.append((r - 1, c - 1))
-				if c + 1 < 8: takeableMoves.append((r - 1, c + 1))
-		return takeableMoves 
+			if ci - 1 > 0:
+				if cj - 1 >= 0: temp.append((ci - 1, cj - 1))
+				if cj + 1 < 8: temp.append((ci - 1, cj + 1))
+		for move in temp:
+			r, c = move
+			# print("(r,c)",(r,c),"(ci,cj)",(ci,cj),"(ni,nj)",(ni,nj))
+			# print("not ", isinstance(board[r][c], NoType), " and ", board[r][c].color(), " != ", board[ci][cj].color())
+			if not isinstance(board[r][c], NoType):
+				if board[r][c].color() != board[ci][cj].color():
+					takeableMoves.append((r,c))
+				else:
+					# print("############ JA")
+					break
+		return list(set(takeableMoves))
 
 class Rook(ChessPiece):
 	def __init__(self, c):
@@ -150,31 +175,93 @@ class Rook(ChessPiece):
 			if not (r, i) == (r, c):
 				possibleMoves.append((r, i))
 
-		return possibleMoves
-		# return list(set(possibleMoves))
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
+
+		return list(set(possibleMoves))
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		path = []
 		ci, cj = curPos
-		ni, nj = newPos
+		newPositions = []
+		path = []
 
-		if self.color() == pieceColor.Black:
-			for i in range(ci + 1, ni + 1):
-				if (i, nj) != curPos:
-					path.append((i, nj))
+		if newPos:
+			newPositions.append(newPos)
 		else:
-			for i in range(ci, ni - 1, -1):
-				if (i, nj) != curPos:
-					path.append((i, nj))
+			newPositions = self.possibleMoves(ci,cj)
+		print("newPositions", newPositions)
+		for newPos in newPositions:
+			ni, nj = newPos
+			if isinstance(board[ni][nj], NoType):
+				path.append(newPos)
+		# for newPos in newPositions:
+		# 	temp = []
+		# 	ni, nj = newPos
 
-		for move in path:
-			r, c = move
-			if not isinstance(board[r][c], NoType):
-				return []
-		return path
+		# 	if self.color() == pieceColor.Black:
+		# 		print("range", ci + 1, ni + 1)
+		# 		for i in range(ci + 1, ni + 1):
+		# 			if (i, nj) != curPos:
+		# 				temp.append((i, nj))
+		# 	else:
+		# 		for i in range(ci, ni - 1, -1):
+		# 			if (i, nj) != curPos:
+		# 				temp.append((i, nj))
+
+		# 	# print(board[ci][cj],"temp",temp)
+		# for move in temp:
+		# 	r, c = move
+		# 	if isinstance(board[r][c], NoType):
+		# 		path.append((r,c))
+		# 	else:
+		# 		break
+		# print("path", path)
+		return list(set(path))
 
 	def takeableMoves(self, curPos, newPos, board):
-		return self.getLegalMovesAndNotBlockedInPath(curPos, newPos, board)
+		ci, cj = curPos
+		newPositions = []
+		path = []
+
+		if newPos:
+			newPositions.append(newPos)
+		else:
+			newPositions = self.possibleMoves(ci,cj)
+		# print("newPositions", newPositions)
+		for newPos in newPositions:
+			ni, nj = newPos
+			# print(newPos)
+			# print("not ", isinstance(board[ni][nj], NoType), " and ", board[ni][nj].color(), " != ", self.color())
+			if not isinstance(board[ni][nj], NoType) and board[ni][nj].color() != self.color():
+				path.append(newPos)
+
+		# path = []
+		# temp = []
+		# ci, cj = curPos
+		# ni, nj = newPos
+
+		# if self.color() == pieceColor.Black:
+		# 	for i in range(ci + 1, ni + 1):
+		# 		if (i, nj) != curPos:
+		# 			temp.append((i, nj))
+		# else:
+		# 	# print("range", ci, ni - 1)
+		# 	for i in range(ci, ni - 1, -1):
+		# 		if (i, nj) != curPos:
+		# 			temp.append((i, nj))
+		# # print(board[ci][cj],"temp",temp)
+		# for move in temp:
+		# 	r, c = move
+		# 	# print("(r,c)",(r,c),"(ci,cj)",(ci,cj),"(ni,nj)",(ni,nj))
+		# 	# print("not ", isinstance(board[r][c], NoType), " and ", board[r][c].color(), " != ", board[ci][cj].color())
+		# 	if not isinstance(board[r][c], NoType):
+		# 		if board[r][c].color() != board[ci][cj].color():
+		# 			path.append((r,c))
+		# 		else:
+		# 			# print("############ JA")
+		# 			break
+		# print("path", path)
+		return list(set(path))
 
 class Knight(ChessPiece):
 	def __init__(self, c):
@@ -204,14 +291,29 @@ class Knight(ChessPiece):
 		if 0 <= r - 1 <= 7 and 0 <= c - 2 <= 7: possibleMoves.append((r - 1, c - 2))
 		if 0 <= r + 1 <= 7 and 0 <= c - 2 <= 7: possibleMoves.append((r + 1, c - 2))
 
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
+
 		return possibleMoves
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		pass
+		return []
 
 	def takeableMoves(self, curPos, newPos, board):
-		r,c = curPos
-		return self.possibleMoves(r,c)
+		ci,cj = curPos
+		takeableMoves = []
+		temp = self.possibleMoves(ci,cj)
+		for move in temp:
+			r, c = move
+			# print("(r,c)",(r,c),"(ci,cj)",(ci,cj),"(ni,nj)",(ni,nj))
+			# print("not ", isinstance(board[r][c], NoType), " and ", board[r][c].color(), " != ", board[ci][cj].color())
+			if not isinstance(board[r][c], NoType):
+				if board[r][c].color() != board[ci][cj].color():
+					takeableMoves.append((r,c))
+				else:
+					# print("############ JA")
+					break
+		return list(set(takeableMoves))
 
 class Bishop(ChessPiece):
 	def __init__(self, c):
@@ -302,123 +404,145 @@ class Bishop(ChessPiece):
 						columnsDone.append(j)
 		# print("possibleMoves4", possibleMoves)
 
-		return possibleMoves
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
+
+		return list(set(possibleMoves))
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		path = []
 		ci, cj = curPos
-		ni, nj = newPos
-		possibleRowsToGoUp = ci
-		possibleRowsToGoDown = 7 - ci
-		possibleColumnsToGoLeft = cj
-		possibleColumnsToGoRight = 7 - cj
-		# print("possibleRowsToGoUp", possibleRowsToGoUp)
-		# print("possibleRowsToGoDown", possibleRowsToGoDown)
-		# print("possibleColumnsToGoLeft", possibleColumnsToGoLeft)
-		# print("possibleColumnsToGoRight", possibleColumnsToGoRight)
-		# print("curPos", curPos)
-		# print("newPos", newPos)
-		# print("rangeI", xx, "->", xx)
-		# print("rangeJ", xx, "->", xx)
+		newPositions = []
+		path = []
 
-		# Diagonal left up
-		rowsDone = []
-		columnsDone = []
-		temp = []
-		for i in range(possibleRowsToGoUp, -1, -1):
-			for j in range(possibleColumnsToGoLeft, -1, -1):
-				if possibleRowsToGoUp - possibleColumnsToGoLeft <= i < possibleRowsToGoUp and \
-					j < possibleColumnsToGoLeft and \
-					i not in rowsDone and \
-					j not in columnsDone:
-						temp.append((i, j))
-						rowsDone.append(i)
-						columnsDone.append(j)
-		# print("temp1",temp)
-		for move in temp:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				path.append((r,c))
-			else:
-				break
-		# print("path1",path)
+		if newPos:
+			newPositions.append(newPos)
+		else:
+			newPositions = self.possibleMoves(ci,cj)
+		for newPos in newPositions:
+			ni, nj = newPos
+			possibleRowsToGoUp = ci
+			possibleRowsToGoDown = 7 - ci
+			possibleColumnsToGoLeft = cj
+			possibleColumnsToGoRight = 7 - cj
+			# print("possibleRowsToGoUp", possibleRowsToGoUp)
+			# print("possibleRowsToGoDown", possibleRowsToGoDown)
+			# print("possibleColumnsToGoLeft", possibleColumnsToGoLeft)
+			# print("possibleColumnsToGoRight", possibleColumnsToGoRight)
+			# print("curPos", curPos)
+			# print("newPos", newPos)
+			# print("rangeI", xx, "->", xx)
+			# print("rangeJ", xx, "->", xx)
 
-		# Diagonal right up
-		rowsDone = []
-		columnsDone = []
-		temp = []
-		# print("rangeI", possibleRowsToGoUp, "->", 0)
-		# print("rangeJ", cj + 1, "->",8)
-		for i in range(possibleRowsToGoUp, 0, -1):
-			for j in range(cj + 1, 8):
-				# print(possibleRowsToGoUp - possibleColumnsToGoRight, " <= ", i, " < ", possibleRowsToGoUp, " and ", cj, " <= ", j, " <= ", cj + possibleColumnsToGoRight, rowsDone, columnsDone)
-				# if ci < i <= possibleRowsToGoDown and \
-				# 	j < possibleColumnsToGoLeft and \
-				if possibleRowsToGoUp - possibleColumnsToGoRight <= i < possibleRowsToGoUp and \
-					cj <= j <= cj + possibleColumnsToGoRight and \
-					i not in rowsDone and \
-					j not in columnsDone:
-						temp.append((i, j))
-						rowsDone.append(i)
-						columnsDone.append(j)
-		# print("temp2",temp)
-		for move in temp:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				path.append((r,c))
-			else:
-				break
-		# print("path2",path)
+			# Diagonal left up
+			rowsDone = []
+			columnsDone = []
+			temp = []
+			for i in range(possibleRowsToGoUp, -1, -1):
+				for j in range(possibleColumnsToGoLeft, -1, -1):
+					if possibleRowsToGoUp - possibleColumnsToGoLeft <= i < possibleRowsToGoUp and \
+						j < possibleColumnsToGoLeft and \
+						i not in rowsDone and \
+						j not in columnsDone:
+							temp.append((i, j))
+							rowsDone.append(i)
+							columnsDone.append(j)
+			# print("temp1",temp)
+			for move in temp:
+				r, c = move
+				if isinstance(board[r][c], NoType):
+					path.append((r,c))
+				else:
+					break
+			# print("path1",path)
 
-		# Diagonal left down
-		rowsDone = []
-		columnsDone = []
-		temp = []
-		for i in range(ci, 8):
-			for j in range(cj - 1, -1, -1):
-				if ci < i <= possibleRowsToGoDown and \
-					j < possibleColumnsToGoLeft and \
-					i not in rowsDone and \
-					j not in columnsDone:
-						temp.append((i, j))
-						rowsDone.append(i)
-						columnsDone.append(j)
-		# print("temp3",temp)
-		for move in temp:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				path.append((r,c))
-			else:
-				break
-		# print("path3",path)
+			# Diagonal right up
+			rowsDone = []
+			columnsDone = []
+			temp = []
+			# print("rangeI", possibleRowsToGoUp, "->", 0)
+			# print("rangeJ", cj + 1, "->",8)
+			for i in range(possibleRowsToGoUp, 0, -1):
+				for j in range(cj + 1, 8):
+					# print(possibleRowsToGoUp - possibleColumnsToGoRight, " <= ", i, " < ", possibleRowsToGoUp, " and ", cj, " <= ", j, " <= ", cj + possibleColumnsToGoRight, rowsDone, columnsDone)
+					# if ci < i <= possibleRowsToGoDown and \
+					# 	j < possibleColumnsToGoLeft and \
+					if possibleRowsToGoUp - possibleColumnsToGoRight <= i < possibleRowsToGoUp and \
+						cj <= j <= cj + possibleColumnsToGoRight and \
+						i not in rowsDone and \
+						j not in columnsDone:
+							temp.append((i, j))
+							rowsDone.append(i)
+							columnsDone.append(j)
+			# print("temp2",temp)
+			for move in temp:
+				r, c = move
+				if isinstance(board[r][c], NoType):
+					path.append((r,c))
+				else:
+					break
+			# print("path2",path)
 
-		# Diagonal right down
-		rowsDone = []
-		columnsDone = []
-		temp = []
-		for i in range(ci, 8):
-			for j in range(cj, 8):
-				if ci < i < 8 and \
-					cj < j < 8 and \
-					i not in rowsDone and \
-					j not in columnsDone:
-						temp.append((i, j))
-						rowsDone.append(i)
-						columnsDone.append(j)
-		# print("temp4",temp)
-		for move in temp:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				path.append((r,c))
-			else:
-				break
-		# print("path4",path)
+			# Diagonal left down
+			rowsDone = []
+			columnsDone = []
+			temp = []
+			for i in range(ci, 8):
+				for j in range(cj - 1, -1, -1):
+					if ci < i <= possibleRowsToGoDown and \
+						j < possibleColumnsToGoLeft and \
+						i not in rowsDone and \
+						j not in columnsDone:
+							temp.append((i, j))
+							rowsDone.append(i)
+							columnsDone.append(j)
+			# print("temp3",temp)
+			for move in temp:
+				r, c = move
+				if isinstance(board[r][c], NoType):
+					path.append((r,c))
+				else:
+					break
+			# print("path3",path)
 
-		return path
+			# Diagonal right down
+			rowsDone = []
+			columnsDone = []
+			temp = []
+			for i in range(ci, 8):
+				for j in range(cj, 8):
+					if ci < i < 8 and \
+						cj < j < 8 and \
+						i not in rowsDone and \
+						j not in columnsDone:
+							temp.append((i, j))
+							rowsDone.append(i)
+							columnsDone.append(j)
+			# print("temp4",temp)
+			for move in temp:
+				r, c = move
+				if isinstance(board[r][c], NoType):
+					path.append((r,c))
+				else:
+					break
+			# print("path4",path)
+
+		return list(set(path))
 
 	def takeableMoves(self, curPos, newPos, board):
-		return self.getLegalMovesAndNotBlockedInPath(curPos, newPos, board)
-		
+		takeableMoves = []
+		temp = self.getLegalMovesAndNotBlockedInPath(curPos, newPos, board)
+		for move in temp:
+			r, c = move
+			# print("(r,c)",(r,c),"(ci,cj)",(ci,cj),"(ni,nj)",(ni,nj))
+			# print("not ", isinstance(board[r][c], NoType), " and ", board[r][c].color(), " != ", board[ci][cj].color())
+			if not isinstance(board[r][c], NoType):
+				if board[r][c].color() != board[ci][cj].color():
+					takeableMoves.append((r,c))
+				else:
+					# print("############ JA")
+					break
+		return list(set(takeableMoves))
+
 class Queen(ChessPiece):
 	def __init__(self, c):
 		super(Queen, self).__init__(c)
@@ -443,20 +567,26 @@ class Queen(ChessPiece):
 		possibleMoves.append(Bishop(self.color()).possibleMoves(r,c))
 		# print("possibleMoves2", possibleMoves)
 		possibleMoves = list(itertools.chain(*possibleMoves))
+
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
 		
-		return possibleMoves
+		return list(set(possibleMoves))
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
 		path = []
 		path.append(Rook(self.color()).getLegalMovesAndNotBlockedInPath(curPos, newPos, board))
 		path.append(Bishop(self.color()).getLegalMovesAndNotBlockedInPath(curPos, newPos, board))
 		path = list(itertools.chain(*path))
-		return path
+		return list(set(path))
 
 	def takeableMoves(self, curPos, newPos, board):
-		# print(curPos)
-		r,c = curPos
-		return self.possibleMoves(r,c)
+		path = []
+		path.append(Rook(self.color()).takeableMoves(curPos, newPos, board))
+		path.append(Bishop(self.color()).takeableMoves(curPos, newPos, board))
+		path = list(itertools.chain(*path))
+		# print("takeableMoves Queen", path)
+		return list(set(path))
 
 class King(ChessPiece):
 	def __init__(self, c):
@@ -486,11 +616,35 @@ class King(ChessPiece):
 		if 0 <= r + 1 <= 7 and 0 <= c <= 7: 	possibleMoves.append((r + 1, c))
 		if 0 <= r + 1 <= 7 and 0 <= c + 1 <= 7: possibleMoves.append((r + 1, c + 1))
 
-		return possibleMoves
+		if (r,c) in possibleMoves:
+			possibleMoves.remove((r,c))
+
+		return list(set(possibleMoves))
 
 	def getLegalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		pass
+		ci, cj = curPos
+		temp = self.possibleMoves(ci, cj)
+		path = []
+		for move in temp:
+			r, c = move
+			if isinstance(board[r][c], NoType):
+				path.append((r,c))
+			else:
+				break
+		return list(set(path))
 
 	def takeableMoves(self, curPos, newPos, board):
-		r,c = curPos
-		return self.possibleMoves(r, c)
+		ci,cj = curPos
+		takeableMoves = []
+		temp = self.possibleMoves(ci, cj)
+		for move in temp:
+			r, c = move
+			# print("(r,c)",(r,c),"(ci,cj)",(ci,cj),"(ni,nj)",(ni,nj))
+			# print("not ", isinstance(board[r][c], NoType), " and ", board[r][c].color(), " != ", board[ci][cj].color())
+			if not isinstance(board[r][c], NoType):
+				if board[r][c].color() != board[ci][cj].color():
+					takeableMoves.append((r,c))
+				else:
+					# print("############ JA")
+					break
+		return list(set(takeableMoves))

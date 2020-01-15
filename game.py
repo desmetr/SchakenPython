@@ -1,6 +1,9 @@
 from chesspiece import *
 import numpy as np
 from tkinter import messagebox
+import logging
+
+f= open("chess.log","w+")
 
 class Game:
 	def __init__(self, root):
@@ -21,15 +24,26 @@ class Game:
 	def setBishopBoard(self):
 		B1B = Bishop(pieceColor.Black)
 		B2B = Bishop(pieceColor.Black)
-		self.board[0][2] = B1B
-		self.board[0][5] = B2B
-		self.blackPiecesInGame.extend([B1B,B2B])
+		self.board[2][2] = B1B
+		# self.board[0][5] = B2B
+		self.blackPiecesInGame.extend([B1B])
 
 		B1W = Bishop(pieceColor.White)
 		B2W = Bishop(pieceColor.White)
-		self.board[7][2] = B1W
-		self.board[7][5] = B2W
-		self.whitePiecesInGame.extend([B1W,B2W])
+		# self.board[7][2] = B1W
+		# self.board[7][5] = B2W
+		# self.whitePiecesInGame.extend([B1W,B2W])
+		self.whitePiecesInGame.extend([])
+
+		self.printStatus(None,None,None,True)
+
+	def setRookBoard(self):
+		R1B = Rook(pieceColor.Black)
+		P1B = Rook(pieceColor.White)
+		self.board[1][4] = R1B
+		self.board[1][0] = P1B
+		self.blackPiecesInGame.extend([R1B])
+		self.whitePiecesInGame.extend([P1B])
 
 		self.printStatus(None,None,None,True)
 
@@ -149,14 +163,15 @@ class Game:
 			r, c = move
 			if isinstance(self.board[r][c], NoType):
 				legalMoves.append(move)
-		
+		# if isinstance(piece, Queen):
+		# 	print("legalMoves", legalMoves)
 		legalMovesAndNotBlocked = legalMoves
 		# Check if another piece is blocking path to newPos
 		# Ask every piece for the path from the current pos to newPos
 		if newPos in legalMoves:
-			if not (isinstance(piece, Knight) or isinstance(piece, King)):
-				legalMovesAndNotBlocked = piece.getLegalMovesAndNotBlockedInPath((ci, cj), newPos, self.board)
-		
+			legalMovesAndNotBlocked = piece.getLegalMovesAndNotBlockedInPath((ci, cj), newPos, self.board)
+		# if isinstance(piece, Queen):
+		# 	print("legalMovesAndNotBlocked", legalMovesAndNotBlocked)
 		return legalMovesAndNotBlocked
 
 	def move(self, piece, newPos): # Verplaats piece naar rij r en kolom c
@@ -170,17 +185,21 @@ class Game:
 			return False
 
 		legalMoves = self.legalMoves(piece, newPos)
+		# print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",piece)
 		takeableMoves = piece.takeableMoves((i,j), (r,c), self.board)
+		# if isinstance(piece, Queen):
+			# print("takeableMoves", takeableMoves)
 
-		self.isCheck(piece.color())
+		# self.isCheck(piece.color())
 		# print("isCheck", self.check)
-		self.isCheckmate(piece.color())
+		# self.isCheckmate(piece.color())
 		# print("isCheckmate", self.checkmate)
-		if self.checkmate:
-			self.handleEndGame()
+		# if self.checkmate:
+		# 	self.handleEndGame()
 
 		# Check if piece can take another piece on newPos
 		if not isinstance(self.board[r][c], NoType) and newPos in takeableMoves and self.board[r][c].color() != self.board[i][j].color():
+			# print("IN TAKE")
 			print("> You can take piece ", self.board[r][c], " on position", newPos, "!")
 			oldPiece = self.board[r][c]
 			if oldPiece.color() == pieceColor.Black: self.blackPiecesInGame.remove(oldPiece)
@@ -222,17 +241,22 @@ class Game:
 		return takeableBlackPieces
 
 	def findAllTakeableWhitePieces(self):
+		f.write(str(self.time) + "@@@@@@@@@@@@@@@@@@@@@@@\n")
 		takeableWhitePieces = []
 		for whitePiece in self.whitePiecesInGame:
 			(wi,wj) = self.getCurrentPosOfPiece(whitePiece)
+			f.write("(wi,wj)"+str((wi,wj))+"\n")
 			for blackPiece in self.blackPiecesInGame:
 				(bi,bj) = self.getCurrentPosOfPiece(blackPiece)
+				f.write("\t(bi,bj)"+str((bi,bj))+"\n")
 				takeableMoves = blackPiece.takeableMoves((bi,bj), (wi,wj), self.board)
+				f.write("\t"+str(blackPiece)+" takeableMoves " + str(takeableMoves)+"\n")
 				# if isinstance(blackPiece, Queen):
 				# 	print(blackPiece, " at ", (bi,bj), "->", takeableMoves)
 				if (wi,wj) in takeableMoves:
 					# print("'",(wi,wj))
 					takeableWhitePieces.append((whitePiece, (wi,wj)))
+				# f.write("\t\ttakeableWhitePieces"+str(takeableWhitePieces)+"\n")
 		return takeableWhitePieces
 
 	def isCheck(self, color, verbose=True):
@@ -243,8 +267,9 @@ class Game:
 				if isinstance(piece, King):
 					if verbose: 
 						print("> BLACK IS IN CHESS")
-						messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": Black is in chess!")
+						# messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": Black is in chess!")
 					self.check = True
+					break
 		if color == pieceColor.White:
 			takeableWhitePieces = self.findAllTakeableWhitePieces()
 			# print("@2",takeableWhitePieces)
@@ -252,11 +277,13 @@ class Game:
 				if isinstance(piece, King):
 					if verbose: 
 						print("> WHITE IS IN CHESS")
-						messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": White is in chess!")
+						# messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": White is in chess!")
 					self.check = True
+					break
 
 	def isCheckmate(self, color):
 		self.isCheck(color, False)
+		isResolved = False
 		if self.check:
 			if color == pieceColor.Black:
 				# Check if by moving the king, you resolve check, if so, not checkmate 
@@ -264,41 +291,53 @@ class Game:
 				for blackPiece in self.blackPiecesInGame:
 					if isinstance(blackPiece, King):
 						r, c = self.getCurrentPosOfPiece(blackPiece)
-						possibleMovesOfKing = blackPiece.possibleMoves(r, c)
-						# print("possibleMovesOfKing",possibleMovesOfKing)
+						# possibleMovesOfKing = blackPiece.possibleMoves(r, c)
+						possibleMovesOfKing = blackPiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
+						takeableMovesOfKing = blackPiece.takeableMoves((r, c), None, self.board)
+						possibleMovesOfKing.extend(takeableMovesOfKing)
+						print("possibleMovesOfKing",possibleMovesOfKing)
 
 						for whitePiece in self.whitePiecesInGame:
 							r, c = self.getCurrentPosOfPiece(whitePiece)
-							possibleMovesWhite = whitePiece.possibleMoves(r, c)
+							possibleMovesWhite = whitePiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
 							intersection = [move for move in possibleMovesWhite if move in possibleMovesOfKing]
 							canPieceResolve.append(all(move in intersection for move in possibleMovesOfKing))
-							# print("possibleMovesWhite", possibleMovesWhite)
-							# print("intersection", intersection)
-							# print(all(move in intersection for move in possibleMovesOfKing))
+							print(whitePiece,"possibleMovesWhite", possibleMovesWhite)
+							print("intersection", intersection)
+							print(all(move in intersection for move in possibleMovesOfKing))
 
-						# print("canPieceResolve", canPieceResolve)
-						# print("any", any(result for result in canPieceResolve))
+						print("canPieceResolve", canPieceResolve)
+						print("any", any(result for result in canPieceResolve))
 						self.checkmate = any(result for result in canPieceResolve)
-				
+						isResolved = not self.checkmate
+
 				# If moving the king doesn't resolve checkmate, try moving the other remaining pieces to resolve, if this helps, not checkmate
-				if not self.checkmate:
-					# print("tweede if")
+				if not isResolved:
+					print("tweede if")
 					canPieceResolve = []
 					for blackPiece in self.blackPiecesInGame:
 						if not isinstance(blackPiece, King):
-							# print("--------")
-							r, c = self.getCurrentPosOfPiece(blackPiece)
-							possibleMovesOfPiece = blackPiece.possibleMoves(r, c)
+							print("--------")
+							rB, cB = self.getCurrentPosOfPiece(blackPiece)
+							# possibleMovesOfPiece = blackPiece.possibleMoves(r, c)
+							possibleMovesOfPiece = blackPiece.getLegalMovesAndNotBlockedInPath((rB, cB), None, self.board)
+
+							# print(blackPiece,(r,c),"possibleMovesOfPiece",possibleMovesOfPiece)
+							possibleMovesOfPiece.append((rB,cB))
 							# print(blackPiece,(r,c),"possibleMovesOfPiece",possibleMovesOfPiece)
 
 							for whitePiece in self.whitePiecesInGame:
-								r, c = self.getCurrentPosOfPiece(whitePiece)
-								possibleMovesWhite = whitePiece.possibleMoves(r, c)
-								# print("possibleMovesWhite", possibleMovesWhite)
-								intersection = [move for move in possibleMovesWhite if move in possibleMovesOfPiece]
+								rW, cW = self.getCurrentPosOfPiece(whitePiece)
+								LegalMovesAndNotBlockedInPathWhite = whitePiece.getLegalMovesAndNotBlockedInPath((rW, cW), None, self.board)
+								# print(whitePiece,"LegalMovesAndNotBlockedInPathWhite", LegalMovesAndNotBlockedInPathWhite)
+								intersection = [move for move in LegalMovesAndNotBlockedInPathWhite if move in possibleMovesOfPiece]
 								# print("intersection", intersection)
-								canPieceResolve.append(any(move in intersection for move in possibleMovesOfPiece))
-								# print(any(move in intersection for move in possibleMovesOfPiece))
+								canPieceResolve.append(any(move in intersection for move in LegalMovesAndNotBlockedInPathWhite))
+								if any(move in intersection for move in LegalMovesAndNotBlockedInPathWhite):
+									print(any(move in intersection for move in LegalMovesAndNotBlockedInPathWhite))
+									print(blackPiece,(rB,cB),"possibleMovesOfPiece",possibleMovesOfPiece)
+									print(whitePiece,(rW,cW),"LegalMovesAndNotBlockedInPathWhite", LegalMovesAndNotBlockedInPathWhite)
+									print("intersection", intersection)
 
 							# print("canPieceResolve", canPieceResolve)
 							# print("any", any(result for result in canPieceResolve))
@@ -314,44 +353,48 @@ class Game:
 				for whitePiece in self.whitePiecesInGame:
 					if isinstance(whitePiece, King):
 						r, c = self.getCurrentPosOfPiece(whitePiece)
-						possibleMovesOfKing = whitePiece.possibleMoves(r, c)
-						# print("possibleMovesOfKing",possibleMovesOfKing)
+						# possibleMovesOfKing = whitePiece.possibleMoves(r, c)
+						possibleMovesOfKing = whitePiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
+						# f.write("possibleMovesOfKing "+str(possibleMovesOfKing)+"\n")
 
 						for blackPiece in self.blackPiecesInGame:
 							r, c = self.getCurrentPosOfPiece(blackPiece)
-							possibleMovesBlack = blackPiece.possibleMoves(r, c)
+							possibleMovesBlack = blackPiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
 							intersection = [move for move in possibleMovesBlack if move in possibleMovesOfKing]
 							canPieceResolve.append(all(move in intersection for move in possibleMovesOfKing))
-							# print("possibleMovesBlack", possibleMovesBlack)
-							# print("intersection", intersection)
-							# print(all(move in intersection for move in possibleMovesOfKing))
+							# f.write("possibleMovesBlack "+str(possibleMovesBlack)+"\n")
+							# f.write("intersection "+str(intersection)+"\n")
+							# f.write(str(all(move in intersection for move in possibleMovesOfKing))+"\n")
 
-						# print("canPieceResolve", canPieceResolve)
-						# print("any", any(result for result in canPieceResolve))
+						# f.write("canPieceResolve "+str(canPieceResolve)+"\n")
+						# f.write("any "+ str(any(result for result in canPieceResolve))+"\n")
 						self.checkmate = any(result for result in canPieceResolve)
+						isResolved = not self.checkmate
 				
 				# If moving the king doesn't resolve checkmate, try moving the other remaining pieces to resolve, if this helps, not checkmate
-				if not self.checkmate:
-					# print("tweede if")
+				if not isResolved:
+					# f.write("tweede if"+"\n")
 					canPieceResolve = []
 					for whitePiece in self.whitePiecesInGame:
 						if not isinstance(whitePiece, King):
-							# print("--------")
+							# f.write("--------"+"\n")
 							r, c = self.getCurrentPosOfPiece(whitePiece)
-							possibleMovesOfPiece = whitePiece.possibleMoves(r, c)
-							# print(blackPiece,(r,c),"possibleMovesOfPiece",possibleMovesOfPiece)
+							# possibleMovesOfPiece = whitePiece.possibleMoves(r, c).append((r,c))
+							possibleMovesOfPiece = whitePiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
+							possibleMovesOfPiece.append((r,c))
+							# f.write(str(blackPiece)+str((r,c))+" possibleMovesOfPiece "+str(possibleMovesOfPiece)+"\n")
 
 							for blackPiece in self.blackPiecesInGame:
 								r, c = self.getCurrentPosOfPiece(blackPiece)
-								possibleMovesBlack = blackPiece.possibleMoves(r, c)
-								# print("possibleMovesBlack", possibleMovesBlack)
+								possibleMovesBlack = blackPiece.getLegalMovesAndNotBlockedInPath((r, c), None, self.board)
+								# f.write("possibleMovesBlack "+str(possibleMovesBlack)+"\n")
 								intersection = [move for move in possibleMovesBlack if move in possibleMovesOfPiece]
-								# print("intersection", intersection)
+								# f.write("intersection "+str(intersection)+"\n")
 								canPieceResolve.append(any(move in intersection for move in possibleMovesOfPiece))
-								# print(any(move in intersection for move in possibleMovesOfPiece))
+								# f.write(str(any(move in intersection for move in possibleMovesOfPiece))+"\n")
 
-							# print("canPieceResolve", canPieceResolve)
-							# print("any", any(result for result in canPieceResolve))
+							# f.write("canPieceResolve "+ str(canPieceResolve)+"\n")
+							# f.write("any " + str(any(result for result in canPieceResolve))+"\n")
 							self.checkmate = any(result for result in canPieceResolve)
 				
 				if self.checkmate:

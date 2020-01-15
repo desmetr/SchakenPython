@@ -21,11 +21,14 @@ class MainWindow():
 		root.title("Schaken")
 
 		self.game = Game(root)
-		self.game.setStartBoard()
-		# self.game.setCheckmateBoard()	
+		# self.game.setStartBoard()
+		self.game.setCheckmateBoard()	
 		# self.game.setBishopBoard()
+		# self.game.setRookBoard()
 		# Black Bishop
-		# piece = self.game.getPieceOnPosition((7,5))
+		# piece = self.game.getPieceOnPosition((1,4))
+		# print(piece.getLegalMovesAndNotBlockedInPath((1,4), None, self.game.board))
+		# print(piece.takeableMoves((1,4), None, self.game.board))
 		# self.game.move(piece, (5,3))
 		
 		board = GameBoard(root, self.game)
