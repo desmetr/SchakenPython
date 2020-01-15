@@ -334,27 +334,42 @@ class Bishop(ChessPiece):
 						temp.append((i, j))
 						rowsDone.append(i)
 						columnsDone.append(j)
+		# print("temp1",temp)
 		for move in temp:
 			r, c = move
-			if not isinstance(board[r][c], NoType):
+			if isinstance(board[r][c], NoType):
 				path.append((r,c))
+			else:
+				break
+		# print("path1",path)
+
 		# Diagonal right up
 		rowsDone = []
 		columnsDone = []
 		temp = []
+		# print("rangeI", possibleRowsToGoUp, "->", 0)
+		# print("rangeJ", cj + 1, "->",8)
 		for i in range(possibleRowsToGoUp, 0, -1):
 			for j in range(cj + 1, 8):
+				# print(possibleRowsToGoUp - possibleColumnsToGoRight, " <= ", i, " < ", possibleRowsToGoUp, " and ", cj, " <= ", j, " <= ", cj + possibleColumnsToGoRight, rowsDone, columnsDone)
+				# if ci < i <= possibleRowsToGoDown and \
+				# 	j < possibleColumnsToGoLeft and \
 				if possibleRowsToGoUp - possibleColumnsToGoRight <= i < possibleRowsToGoUp and \
-					nj < j <= nj + possibleColumnsToGoRight and \
+					cj <= j <= cj + possibleColumnsToGoRight and \
 					i not in rowsDone and \
 					j not in columnsDone:
 						temp.append((i, j))
 						rowsDone.append(i)
 						columnsDone.append(j)
+		# print("temp2",temp)
 		for move in temp:
 			r, c = move
-			if not isinstance(board[r][c], NoType):
+			if isinstance(board[r][c], NoType):
 				path.append((r,c))
+			else:
+				break
+		# print("path2",path)
+
 		# Diagonal left down
 		rowsDone = []
 		columnsDone = []
@@ -368,10 +383,15 @@ class Bishop(ChessPiece):
 						temp.append((i, j))
 						rowsDone.append(i)
 						columnsDone.append(j)
+		# print("temp3",temp)
 		for move in temp:
 			r, c = move
-			if not isinstance(board[r][c], NoType):
+			if isinstance(board[r][c], NoType):
 				path.append((r,c))
+			else:
+				break
+		# print("path3",path)
+
 		# Diagonal right down
 		rowsDone = []
 		columnsDone = []
@@ -385,15 +405,20 @@ class Bishop(ChessPiece):
 						temp.append((i, j))
 						rowsDone.append(i)
 						columnsDone.append(j)
+		# print("temp4",temp)
 		for move in temp:
 			r, c = move
-			if not isinstance(board[r][c], NoType):
+			if isinstance(board[r][c], NoType):
 				path.append((r,c))
+			else:
+				break
+		# print("path4",path)
+
 		return path
 
 	def takeableMoves(self, curPos, newPos, board):
 		return self.getLegalMovesAndNotBlockedInPath(curPos, newPos, board)
-
+		
 class Queen(ChessPiece):
 	def __init__(self, c):
 		super(Queen, self).__init__(c)

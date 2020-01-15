@@ -16,19 +16,22 @@ class MainWindow():
 		# self.display_moves = QAction(self.tr("&temp"), self)
 		# self.display_kills = QAction(self.tr("&temp"), self)
 		# self.display_threats = QAction(self.tr("&temp"), self)
-
-		self.game = Game()
-		self.game.setStartBoard()
-		# piece = self.game.getPieceOnPosition((6,5))
-		# self.game.move(piece, (5,5))			
 		
 		root = tk.Tk()
 		root.title("Schaken")
+
+		self.game = Game(root)
+		self.game.setStartBoard()
+		# self.game.setCheckmateBoard()	
+		# self.game.setBishopBoard()
+		# Black Bishop
+		# piece = self.game.getPieceOnPosition((7,5))
+		# self.game.move(piece, (5,3))
+		
 		board = GameBoard(root, self.game)
 		board.pack(side="top", fill="both", expand="true", padx=4, pady=4)
 		root.mainloop()
 		
-		# self.game.setCheckmateBoard()	
 		# self.game.isCheck(pieceColor.Black)
 		# self.game.isCheckmate(pieceColor.Black)
 		

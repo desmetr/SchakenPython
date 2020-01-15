@@ -1,12 +1,15 @@
 from chesspiece import *
 import numpy as np
+from tkinter import messagebox
 
 class Game:
-	def __init__(self):
+	def __init__(self, root):
 		self.board = [[NoType(pieceColor.White)] * 8 for i in range(8)]
 		self.time = 0
 		self.firstMoveWhite = not self.time
 		self.firstMoveBlack = not self.time
+
+		self.root = root
 
 		self.blackPiecesInGame = []
 		self.whitePiecesInGame = []
@@ -15,28 +18,34 @@ class Game:
 		self.checkmate = False
 		self.colorInCheckmate = None
 
-	def setCheckmateBoard(self):
-		P1B = Pawn(pieceColor.Black)
-		KnB = Knight(pieceColor.Black)
-		P3B = Pawn(pieceColor.Black)
-		P4B = Pawn(pieceColor.Black)
-		KB = King(pieceColor.Black)
-		RB = Rook(pieceColor.Black)
-		self.board[0][4] = KB
-		self.board[1][6] = RB
-		self.board[0][3] = P1B
-		self.board[0][5] = KnB
-		self.board[1][3] = P3B
-		self.board[1][4] = P4B
-		self.blackPiecesInGame.extend([RB, KB, P1B, KnB, P3B, P4B])
+	def setBishopBoard(self):
+		B1B = Bishop(pieceColor.Black)
+		B2B = Bishop(pieceColor.Black)
+		self.board[0][2] = B1B
+		self.board[0][5] = B2B
+		self.blackPiecesInGame.extend([B1B,B2B])
 
 		B1W = Bishop(pieceColor.White)
-		self.board[3][7] = B1W
-		self.whitePiecesInGame.extend([B1W])
+		B2W = Bishop(pieceColor.White)
+		self.board[7][2] = B1W
+		self.board[7][5] = B2W
+		self.whitePiecesInGame.extend([B1W,B2W])
 
 		self.printStatus(None,None,None,True)
-		# self.isCheck(pieceColor.Black)
-		# self.isCheck(pieceColor.White)
+
+
+	def setCheckmateBoard(self):
+		KB = King(pieceColor.Black)
+		self.board[0][4] = KB
+		self.blackPiecesInGame.extend([KB])
+
+		Kn1W = Knight(pieceColor.White)
+		QW = Queen(pieceColor.White)
+		self.board[3][5] = Kn1W
+		self.board[1][4] = QW
+		self.whitePiecesInGame.extend([QW,Kn1W])
+
+		self.printStatus(None,None,None,True)
 
 	def setStartBoard(self):
 		P1B = Pawn(pieceColor.Black)
@@ -156,6 +165,8 @@ class Game:
 
 		if piece.color() != pieceColor.White and self.time == 0:
 			print("> BOARD AT TIME ", self.time, ": MOVE " + str(piece) + " FROM ", (i,j), " TO ", newPos, " NOT ALLOWED. WHITE HAS TO START.\n")
+			messagebox.showinfo("Wrong Move", "Board at time " + str(self.time) + ": move " + str(piece) + " from " + str((i,j)) + " to " + str(newPos) + " not allowed. White has to start.")
+
 			return False
 
 		legalMoves = self.legalMoves(piece, newPos)
@@ -193,6 +204,8 @@ class Game:
 			return True
 		else:
 			print("> BOARD AT TIME ", self.time, ": MOVE " + str(piece) + " FROM ", (i,j), " TO ", newPos, " NOT ALLOWED\n")
+			messagebox.showinfo("Wrong Move", "Board at time " + str(self.time) + ": move " + str(piece) + " from " + str((i,j)) + " to " + str(newPos) + " not allowed.")
+
 			return False
 
 	def findAllTakeableBlackPieces(self):
@@ -228,14 +241,18 @@ class Game:
 			# print("@1",takeableBlackPieces)
 			for piece, pos in takeableBlackPieces:
 				if isinstance(piece, King):
-					if verbose: print("> BLACK IS IN CHESS")
+					if verbose: 
+						print("> BLACK IS IN CHESS")
+						messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": Black is in chess!")
 					self.check = True
 		if color == pieceColor.White:
 			takeableWhitePieces = self.findAllTakeableWhitePieces()
 			# print("@2",takeableWhitePieces)
 			for piece, pos in takeableWhitePieces:
 				if isinstance(piece, King):
-					if verbose: print("> WHITE IS IN CHESS")
+					if verbose: 
+						print("> WHITE IS IN CHESS")
+						messagebox.showinfo("Chess", "Board at time " + str(self.time) + ": White is in chess!")
 					self.check = True
 
 	def isCheckmate(self, color):
@@ -346,6 +363,8 @@ class Game:
 
 	def handleEndGame(self):
 		print(">", self.colorInCheckmate.name.upper(), "IS IN CHECKMATE, END GAME.")
+		messagebox.showinfo("Checkmate", "Board at time " + str(self.time) + ": " + self.colorInCheckmate.name.upper() + " is checkmate! End of game!")
+		self.root.quit()
 		self.checkmate = False
 		self.check = False
 		self.colorInCheckmate = None
@@ -356,6 +375,7 @@ class Game:
 		for i in range(0, 8):
 			for j in range(0, 8):
 				color = "_W" if self.board[i][j].color() == pieceColor.White else "_B"
+				selected = "_T" if self.board[i][j].selected else "_F"
 				if isinstance(self.board[i][j], Pawn):
 					result += "P" + color + "  "
 				elif isinstance(self.board[i][j], Rook):
