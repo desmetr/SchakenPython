@@ -21,32 +21,165 @@ class Game:
 		self.checkmate = False
 		self.colorInCheckmate = None
 
+	def setPawnBoard(self):
+		P1B = Pawn(pieceColor.Black)
+		P2B = Pawn(pieceColor.Black)
+		P3B = Pawn(pieceColor.Black)
+		P4B = Pawn(pieceColor.Black)
+		P5B = Pawn(pieceColor.Black)
+		P6B = Pawn(pieceColor.Black)
+		P7B = Pawn(pieceColor.Black)
+		P8B = Pawn(pieceColor.Black)
+		self.board[1][0] = P1B
+		self.board[1][1] = P2B
+		self.board[1][2] = P3B
+		self.board[1][3] = P4B
+		self.board[1][4] = P5B
+		self.board[1][5] = P6B
+		self.board[1][6] = P7B
+		self.board[1][7] = P8B
+		self.blackPiecesInGame.extend([P1B, P2B, P3B, P4B, P5B, P6B, P7B, P8B])
+
+		P1W = Pawn(pieceColor.White)
+		P2W = Pawn(pieceColor.White)
+		P3W = Pawn(pieceColor.White)
+		P4W = Pawn(pieceColor.White)
+		P5W = Pawn(pieceColor.White)
+		P6W = Pawn(pieceColor.White)
+		P8W = Pawn(pieceColor.White)
+		P7W = Pawn(pieceColor.White)
+		# self.board[6][0] = P1W
+		self.board[2][1] = P2W
+		self.board[2][2] = P3W
+		self.board[2][3] = P4W
+		self.board[2][4] = P5W
+		self.board[2][5] = P6W
+		self.board[2][6] = P7W
+		self.board[2][7] = P8W
+		self.whitePiecesInGame.extend([P8W, P2W, P3W, P4W, P5W, P6W, P7W])
+
+		self.printStatus(None,None,None,True)
+	
+	def setRookBoard(self):
+		R1B = Rook(pieceColor.Black)
+		P1B = Pawn(pieceColor.Black)
+		P2B = Pawn(pieceColor.Black)
+		P3B = Pawn(pieceColor.Black)
+		# R2B = Rook(pieceColor.Black)
+		self.board[0][0] = R1B
+		# self.board[0][7] = R2B
+		# self.board[2][5] = R1B
+		self.blackPiecesInGame.extend([R1B])
+		R1W = Rook(pieceColor.White)
+		R2W = Rook(pieceColor.White)
+		self.board[0][1] = R1W
+		self.board[7][0] = R2W
+		# self.board[4][4] = R1W
+		self.whitePiecesInGame.extend([R1W,R2W])
+		self.printStatus(None,None,None,True)
+
+	def setKnightBoard(self):
+		Kn1B = Knight(pieceColor.Black)
+		Kn2B = Knight(pieceColor.Black)
+		P1B = Pawn(pieceColor.Black)
+		P2B = Pawn(pieceColor.Black)
+		P3B = Pawn(pieceColor.Black)
+		P4B = Pawn(pieceColor.Black)
+		P5B = Pawn(pieceColor.Black)
+		P6B = Pawn(pieceColor.Black)
+		P7B = Pawn(pieceColor.Black)
+		P8B = Pawn(pieceColor.Black)
+		self.board[0][1] = Kn1B
+		# self.board[0][6] = Kn2B
+		self.board[1][0] = P1B
+		self.board[1][1] = P2B
+		self.board[1][2] = P3B
+		self.board[1][3] = P4B
+		self.board[1][4] = P5B
+		self.board[1][5] = P6B
+		self.board[1][6] = P7B
+		self.board[1][7] = P8B
+		# self.board[3][4] = Kn1B
+		self.blackPiecesInGame.extend([P1B, P2B, P3B, P4B, P5B, P6B, P7B, P8B, Kn1B])
+
+		Kn1W = Knight(pieceColor.White)
+		Kn2W = Knight(pieceColor.White)
+		self.board[2][0] = Kn1W
+		self.board[2][2] = Kn2W
+		# self.board[1][6] = Kn1W
+		self.whitePiecesInGame.extend([Kn1W, Kn2W])
+	
+		self.printStatus(None,None,None,True)
+
 	def setBishopBoard(self):
 		B1B = Bishop(pieceColor.Black)
 		B2B = Bishop(pieceColor.Black)
-		self.board[2][2] = B1B
-		# self.board[0][5] = B2B
-		self.blackPiecesInGame.extend([B1B])
+		P1B = Pawn(pieceColor.Black)
+		P2B = Pawn(pieceColor.Black)
+		self.board[1][1] = P1B
+		# self.board[6][2] = P2B
+		self.board[0][2] = B1B
+		self.board[0][5] = B2B
+		self.blackPiecesInGame.extend([P1B,P2B,B1B,B2B])
 
 		B1W = Bishop(pieceColor.White)
 		B2W = Bishop(pieceColor.White)
-		# self.board[7][2] = B1W
-		# self.board[7][5] = B2W
-		# self.whitePiecesInGame.extend([B1W,B2W])
-		self.whitePiecesInGame.extend([])
+		self.board[7][2] = B1W
+		self.board[7][7] = B2W
+		P1W = Pawn(pieceColor.White)
+		P2W = Pawn(pieceColor.White)
+		P3W = Pawn(pieceColor.White)
+		P4W = Pawn(pieceColor.White)
+		P5W = Pawn(pieceColor.White)
+		P6W = Pawn(pieceColor.White)
+		P8W = Pawn(pieceColor.White)
+		P7W = Pawn(pieceColor.White)
+		self.board[2][0] = P1W
+		self.board[2][4] = P2W
+		self.board[2][3] = P3W
+		self.board[2][7] = P4W
+		# self.board[6][4] = P5W
+		# self.board[6][5] = P6W
+		# self.board[6][6] = P7W
+		# self.board[6][7] = P8W
+		self.whitePiecesInGame.extend([B1W,B2W,P1W,P2W,P3W,P4W])
 
 		self.printStatus(None,None,None,True)
 
-	def setRookBoard(self):
-		R1B = Rook(pieceColor.Black)
-		P1B = Rook(pieceColor.White)
-		self.board[1][4] = R1B
-		self.board[1][0] = P1B
-		self.blackPiecesInGame.extend([R1B])
-		self.whitePiecesInGame.extend([P1B])
-
+	def setQueenBoard(self):
+		QB = Queen(pieceColor.Black)
+		self.board[0][3] = QB
+		# self.board[4][4] = QB
+		self.blackPiecesInGame.extend([QB])
+		QW = Queen(pieceColor.White)
+		self.board[7][3] = QW
+		# self.board[4][4] = QW
+		self.whitePiecesInGame.extend([QW])
 		self.printStatus(None,None,None,True)
 
+	def setKingBoard(self):
+		KB = King(pieceColor.Black)
+		self.board[0][4] = KB
+		# self.board[3][5] = KB
+		self.blackPiecesInGame.extend([KB])
+		P1W = Pawn(pieceColor.White)
+		P2W = Pawn(pieceColor.White)
+		P3W = Pawn(pieceColor.White)
+		P4W = Pawn(pieceColor.White)
+		P5W = Pawn(pieceColor.White)
+		P6W = Pawn(pieceColor.White)
+		P8W = Pawn(pieceColor.White)
+		P7W = Pawn(pieceColor.White)
+		# self.board[6][0] = P1W
+		self.board[0][3] = P2W
+		self.board[0][5] = P3W
+		self.board[1][3] = P4W
+		self.board[1][4] = P5W
+		self.board[1][5] = P6W
+		self.board[2][6] = P7W
+		self.board[2][7] = P8W
+		self.whitePiecesInGame.extend([P8W, P2W, P3W, P4W, P5W, P6W, P7W])
+		self.printStatus(None,None,None,True)
 
 	def setCheckmateBoard(self):
 		KB = King(pieceColor.Black)

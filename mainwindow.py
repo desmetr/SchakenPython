@@ -22,18 +22,30 @@ class MainWindow():
 
 		self.game = Game(root)
 		# self.game.setStartBoard()
-		self.game.setCheckmateBoard()	
-		# self.game.setBishopBoard()
+		# self.game.setCheckmateBoard()	
+		# self.game.setPawnBoard()
 		# self.game.setRookBoard()
-		# Black Bishop
-		# piece = self.game.getPieceOnPosition((1,4))
-		# print(piece.getLegalMovesAndNotBlockedInPath((1,4), None, self.game.board))
-		# print(piece.takeableMoves((1,4), None, self.game.board))
-		# self.game.move(piece, (5,3))
+		# self.game.setKnightBoard()
+		self.game.setBishopBoard()
+		# self.game.setQueenBoard()
+		# self.game.setKingBoard()
 		
-		board = GameBoard(root, self.game)
-		board.pack(side="top", fill="both", expand="true", padx=4, pady=4)
-		root.mainloop()
+		for piece in self.game.whitePiecesInGame + self.game.blackPiecesInGame:
+		# for piece in self.game.blackPiecesInGame:
+		# for piece in self.game.whitePiecesInGame:
+			if isinstance(piece, Bishop) and piece.color() == pieceColor.Black:
+				print("--------")
+				r,c = self.game.getCurrentPosOfPiece(piece)
+				print("(r,c)=",(r,c))
+				# print("possibleMoves=", piece.possibleMoves(r,c,True,True))
+				# print("possibleMovesLeftDown=", piece.possibleMovesLeftDown(r,c))
+				# print("legalMovesAndNotBlockedInPath=", piece.getLegalMovesAndNotBlockedInPath((r,c), None, self.game.board))
+				print("takeableMoves=", piece.takeableMoves((r,c), None, self.game.board))
+				# input("")
+		
+		# board = GameBoard(root, self.game)
+		# board.pack(side="top", fill="both", expand="true", padx=4, pady=4)
+		# root.mainloop()
 		
 		# self.game.isCheck(pieceColor.Black)
 		# self.game.isCheckmate(pieceColor.Black)
