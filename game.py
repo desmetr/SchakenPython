@@ -2,6 +2,7 @@ from chesspiece import *
 import numpy as np
 from tkinter import messagebox
 import tkinter as tk
+import copy
 
 class Game:
 	def __init__(self, root):
@@ -18,6 +19,11 @@ class Game:
 		self.check = False
 		self.checkmate = False
 		self.colorInCheckmate = None
+
+		self.blackLongRokadePossible = False
+		self.blackShortRokadePossible = False
+		self.whiteLongRokadePossible = False
+		self.whiteShortRokadePossible = False
 
 	def setPawnBoard(self):
 		P1B = Pawn(pieceColor.Black)
@@ -211,6 +217,32 @@ class Game:
 		self.whitePiecesInGame.extend([P8W, P1W, P2W, P3W, P4W, P5W, P6W, P7W])
 		self.printStatus(None,None,None,True)
 
+	def setRokadeBoard(self):
+		KB = King(pieceColor.Black)
+		R1B = Rook(pieceColor.Black)
+		R2B = Rook(pieceColor.Black)
+		B1B = Bishop(pieceColor.Black)
+		self.board[0][4] = KB
+		self.board[0][0] = R1B
+		self.board[0][7] = R2B
+		# self.board[0][1] = B1B
+		self.blackPiecesInGame.extend([KB, R1B, R2B])
+
+		KW = King(pieceColor.White)
+		R1W = Rook(pieceColor.White)
+		R2W = Rook(pieceColor.White)
+		self.board[7][4] = KW
+		self.board[7][0] = R1W
+		self.board[7][7] = R2W
+		self.whitePiecesInGame.extend([KW, R1W, R2W])
+		self.printStatus(None,None,None,True)
+
+	def setPromoteBoard(self):
+		P1W = Pawn(pieceColor.White)
+		self.board[1][3] = P1W
+		self.whitePiecesInGame.extend([P1W])
+		self.printStatus(None,None,None,True)
+
 	def setCheckBoard(self):
 		KB = King(pieceColor.Black)
 		self.board[0][4] = KB
@@ -306,7 +338,6 @@ class Game:
 		self.whitePiecesInGame.extend([P1W, P2W, P3W, P4W, P5W, P6W, P7W, P8W, R1W, R2W, Kn1W, Kn2W, B1W, B2W, QW, KW])
 
 		self.printStatus(None,None,None,True)
-		# self.isCheck()
 
 	def getPieceOnPosition(self, pos):
 		r, c = pos
@@ -321,14 +352,19 @@ class Game:
 					c = j
 		return (r,c)
 
-	def getCurrentPosOfPieceDuringCheckmate(self, piece, board):
-		r = c = -1
-		for i in range(0,8):
-			for j in range(0,8):
-				if board[i][j] == piece:
-					r = i
-					c = j
-		return (r,c)
+	def getBlackKingPosition(self):
+		blackKing = None
+		for piece in self.blackPiecesInGame:
+			if isinstance(piece, King):
+				blackKing = piece
+		return self.getCurrentPosOfPiece(blackKing)
+
+	def getWhiteKingPosition(self):
+		whiteKing = None
+		for piece in self.whitePiecesInGame:
+			if isinstance(piece, King):
+				whiteKing = piece
+		return self.getCurrentPosOfPiece(whiteKing)
 
 	def legalMoves(self, piece, newPos):
 		ci, cj = self.getCurrentPosOfPiece(piece)
@@ -348,27 +384,10 @@ class Game:
 
 		return legalMovesAndNotBlocked
 
-	def legalMovesDuringCheckmate(self, piece, newPos, board):
-		ci, cj = self.getCurrentPosOfPieceDuringCheckmate(piece, board)
-
-		possibleMoves = piece.possibleMoves(ci, cj)
-
-		legalMoves = []
-		for move in possibleMoves:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				legalMoves.append(move)
-
-		legalMovesAndNotBlocked = legalMoves
-
-		if newPos in legalMoves:
-			legalMovesAndNotBlocked = piece.legalMovesAndNotBlockedInPath((ci, cj), newPos, board)
-
-		return legalMovesAndNotBlocked
-
 	def move(self, piece, newPos):
 		i, j = self.getCurrentPosOfPiece(piece)
 		r, c = newPos
+		pieceOnNewPos = self.getPieceOnPosition(newPos)
 
 		if piece.color() != pieceColor.White and self.time == 0:
 			print("> BOARD AT TIME ", self.time, ": MOVE " + str(piece) + " FROM ", (i,j), " TO ", newPos, " NOT ALLOWED. WHITE HAS TO START.\n")
@@ -398,20 +417,48 @@ class Game:
 			self.printStatus(piece, (i,j), (r,c))
 			return True
 
+		# Handle rokade
+		if isinstance(piece, King) and isinstance(pieceOnNewPos, Rook):
+			if self.blackLongRokadePossible and (r,c) == (0,0):
+				self.board[0][4] = NoType(pieceColor.White)
+				self.board[0][0] = NoType(pieceColor.White)
+				self.board[0][2] = piece
+				self.board[0][3] = pieceOnNewPos
+			elif self.blackShortRokadePossible and (r,c) == (0,7):
+				self.board[0][4] = NoType(pieceColor.White)
+				self.board[0][7] = NoType(pieceColor.White)
+				self.board[0][5] = pieceOnNewPos
+				self.board[0][6] = piece
+			elif self.whiteLongRokadePossible and (r,c) == (7,0):
+				self.board[7][4] = NoType(pieceColor.White)
+				self.board[7][0] = NoType(pieceColor.White)
+				self.board[7][2] = piece
+				self.board[7][3] = pieceOnNewPos
+			elif self.whiteShortRokadePossible and (r,c) == (7,7):
+				self.board[7][4] = NoType(pieceColor.White)
+				self.board[7][7] = NoType(pieceColor.White)
+				self.board[7][5] = pieceOnNewPos
+				self.board[7][6] = piece
+			self.blackLongRokadePossible = False
+			self.blackShortRokadePossible = False
+			self.whiteLongRokadePossible = False
+			self.whiteShortRokadePossible = False
+			self.time += 1
+			self.printStatus(piece, (i,j), (r,c))
+			return True
+
 		# If not, check if piece can move to newPos and act accordingly
 		if (r,c) in legalMoves:
 			oldPiece = self.board[i][j]
 			self.board[i][j] = NoType(pieceColor.White)
 			self.board[r][c] = piece
 
-			# if isinstance(piece, Pawn) and piece.canPromote(r, c):
-			# 	self.pawnToPromote = piece
-			# 	self.promoteWindow()
-			# 	self.root.wait_window(self.win)
-			# 	self.promotePawn()
-			# 	print("AA")
-			# print("BB")
 			self.time += 1
+			if isinstance(piece, Pawn) and piece.canPromote(r, c):
+				self.pawnToPromote = piece
+				self.promoteWindow()
+				self.root.wait_window(self.win)
+				self.promotePawn()
 			self.printStatus(piece, (i,j), (r,c))
 			return True
 		else:
@@ -420,55 +467,6 @@ class Game:
 
 			return False
 
-	def moveDuringCheckmate(self, piece, newPos):
-		print(newPos)
-		tempBoard = self.board
-		i, j = self.getCurrentPosOfPieceDuringCheckmate(piece, tempBoard)
-		r, c = newPos
-
-		legalMoves = self.legalMovesDuringCheckmate(piece, newPos, tempBoard)
-		takeableMoves = piece.takeableMoves((i,j), (r,c), tempBoard)
-		piece.firstMove = False
-		# Check if piece can take another piece on newPos
-		if not isinstance(tempBoard[r][c], NoType) and newPos in takeableMoves and tempBoard[r][c].color() != tempBoard[i][j].color():
-			oldPiece = tempBoard[r][c]
-			tempBoard[i][j] = NoType(pieceColor.White)
-			tempBoard[r][c] = piece
-			
-		# If not, check if piece can move to newPos and act accordingly
-		if (r,c) in legalMoves:
-			oldPiece = tempBoard[i][j]
-			tempBoard[i][j] = NoType(pieceColor.White)
-			tempBoard[r][c] = piece
-		print("###",self.getCurrentPosOfPiece(piece))
-
-		result = ""
-		color = ""
-		for i in range(0, 8):
-			for j in range(0, 8):
-				color = "_W" if tempBoard[i][j].color() == pieceColor.White else "_B"
-				selected = "_T" if tempBoard[i][j].selected else "_F"
-				if isinstance(tempBoard[i][j], Pawn):
-					result += "P" + color + "  "
-				elif isinstance(tempBoard[i][j], Rook):
-					result += "R" + color + "  "
-				elif isinstance(tempBoard[i][j], Knight):
-					result += "KN" + color + " "
-				elif isinstance(tempBoard[i][j], Bishop):
-					result += "B" + color + "  "
-				elif isinstance(tempBoard[i][j], Queen):
-					result += "Q" + color + "  "
-				elif isinstance(tempBoard[i][j], King):
-					result += "K" + color + "  "
-				else:
-					result += "x    "
-			result += "\n"
-		print(result)
-
-		print("##",self.getCurrentPosOfPiece(piece))
-
-		return tempBoard
-
 	def promoteWindow(self):
 		self.win = tk.Toplevel()
 		self.win.wm_title("Promote")
@@ -476,24 +474,21 @@ class Game:
 		l = tk.Label(self.win, text="Choose piece to promote to:")
 		l.grid(row=0, column=0)
 
-		bQueen = tk.Button(self.win, text="Queen", command=self.promoteCallback("Queen"))
-		# bQueen = tk.Button(self.win, text="Queen", command=self.promoteToQueen)
+		bQueen = tk.Button(self.win, text="Queen", command=(lambda: self.promoteCallback("Queen")))
 		bQueen.grid(row=0, column=1)
 
-		bRook = tk.Button(self.win, text="Rook", command=self.promoteCallback("Rook"))
-		# bRook = tk.Button(self.win, text="Rook", command=self.promoteToRook)
+		bRook = tk.Button(self.win, text="Rook", command=(lambda: self.promoteCallback("Rook")))
 		bRook.grid(row=0, column=2)
 
-		bBishop = tk.Button(self.win, text="Bishop", command=self.promoteCallback("Bishop"))
-		# bBishop = tk.Button(self.win, text="Bishop", command=self.promoteToBishop)
+		bBishop = tk.Button(self.win, text="Bishop", command=(lambda: self.promoteCallback("Bishop")))
 		bBishop.grid(row=0, column=3)
 
-		bKnight = tk.Button(self.win, text="Knight", command=self.promoteCallback("Knight"))
-		# bKnight = tk.Button(self.win, text="Knight", command=self.promoteToKnight)
+		bKnight = tk.Button(self.win, text="Knight", command=(lambda: self.promoteCallback("Knight")))
 		bKnight.grid(row=0, column=4)
 
 	def promoteCallback(self, promotedPiece):
 		self.promotedPiece = promotedPiece
+		self.win.destroy()
 
 	def promotePawn(self):
 		newPiece = None
@@ -504,117 +499,20 @@ class Game:
 			self.blackPiecesInGame.remove(self.pawnToPromote)
 		elif self.pawnToPromote and newColor == pieceColor.White:
 			self.whitePiecesInGame.remove(self.pawnToPromote)
+		
 		if self.promotedPiece == "Queen": 	newPiece = Queen(newColor)
 		if self.promotedPiece == "Rook":	newPiece = Rook(newColor)
 		if self.promotedPiece == "Bishop":	newPiece = Bishop(newColor)
 		if self.promotedPiece == "Knight":	newPiece = Knight(newColor)
 
+		if newColor == pieceColor.Black:	self.blackPiecesInGame.append(newPiece)
+		if newColor == pieceColor.White:	self.whitePiecesInGame.append(newPiece)
+
 		self.board[r][c] = newPiece
 
-		print("> BOARD AT TIME ", self.time, ": PROMOTED " + str(self.pawnToPromote) + " ON ", (r,c), " TO A", newPiece, "\n")
+		print("> BOARD AT TIME ", self.time, ": PROMOTED " + str(self.pawnToPromote) + " ON ", (r,c), " TO A", newPiece)
+		print("---------------------------------------------------------------------")
 		self.pawnToPromote = None
-
-
-	# def promoteToQueen(self):
-	# 	newQueen = None
-	# 	r, c = self.getCurrentPosOfPiece(self.pawnToPromote)
-
-	# 	if self.pawnToPromote.color() == pieceColor.Black:
-	# 		if self.pawnToPromote:
-	# 			self.blackPiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newQueen = Queen(pieceColor.Black)
-	# 		self.blackPiecesInGame.append(newQueen)
-	# 	elif self.pawnToPromote.color() == pieceColor.White:
-	# 		if self.pawnToPromote:
-	# 			self.whitePiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newQueen = Queen(pieceColor.White)
-	# 		self.whitePiecesInGame.append(newQueen)
-		
-	# 	self.board[r][c] = newQueen
-	# 	self.win.destroy()
-
-	# def promoteToRook(self):
-	# 	newRook = None
-	# 	r, c = self.getCurrentPosOfPiece(self.pawnToPromote)
-
-	# 	if self.pawnToPromote.color() == pieceColor.Black:
-	# 		if self.pawnToPromote:
-	# 			self.blackPiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newRook = Rook(pieceColor.Black)
-	# 		self.blackPiecesInGame.append(newRook)
-	# 	elif self.pawnToPromote.color() == pieceColor.White:
-	# 		if self.pawnToPromote:
-	# 			self.whitePiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newRook = Rook(pieceColor.White)
-	# 		self.whitePiecesInGame.append(newRook)
-
-	# 	self.board[r][c] = newRook
-	# 	self.win.destroy()
-
-	# def promoteToBishop(self):
-	# 	newBishop = None
-	# 	r, c = self.getCurrentPosOfPiece(self.pawnToPromote)
-	
-	# 	if self.pawnToPromote.color() == pieceColor.Black:
-	# 		if self.pawnToPromote:
-	# 			self.blackPiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newBishop = Bishop(pieceColor.Black)
-	# 		self.blackPiecesInGame.append(newBishop)
-	# 	elif self.pawnToPromote.color() == pieceColor.White:
-	# 		if self.pawnToPromote:
-	# 			self.whitePiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newBishop = Bishop(pieceColor.White)
-	# 		self.whitePiecesInGame.append(newBishop)
-
-	# 	self.board[r][c] = newBishop
-	# 	self.win.destroy()
-	
-	# def promoteToKnight(self):
-	# 	newKnight = None
-	# 	r, c = self.getCurrentPosOfPiece(self.pawnToPromote)
-	
-	# 	if self.pawnToPromote.color() == pieceColor.Black:
-	# 		if self.pawnToPromote:
-	# 			self.blackPiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newKnight = Knight(pieceColor.Black)
-	# 		self.blackPiecesInGame.append(newKnight)
-	# 	elif self.pawnToPromote.color() == pieceColor.White:
-	# 		if self.pawnToPromote:
-	# 			self.whitePiecesInGame.remove(self.pawnToPromote)
-	# 			self.pawnToPromote = None
-	# 		newKnight = Knight(pieceColor.White)
-	# 		self.whitePiecesInGame.append(newKnight)
-
-	# 	self.board[r][c] = newKnight
-	# 	self.win.destroy()
-	
-	def findAllTakeableBlackPieces(self):
-		takeableBlackPieces = []
-		for blackPiece in self.blackPiecesInGame:
-			(bi,bj) = self.getCurrentPosOfPiece(blackPiece)
-			for whitePiece in self.whitePiecesInGame:
-				(wi,wj) = self.getCurrentPosOfPiece(whitePiece)
-				if (bi,bj) in whitePiece.takeableMoves((wi,wj), (bi,bj), self.board):
-					takeableBlackPieces.append((blackPiece, (bi,bj)))
-		return takeableBlackPieces
-
-	def findAllTakeableWhitePieces(self):
-		takeableWhitePieces = []
-		for whitePiece in self.whitePiecesInGame:
-			(wi,wj) = self.getCurrentPosOfPiece(whitePiece)
-			for blackPiece in self.blackPiecesInGame:
-				(bi,bj) = self.getCurrentPosOfPiece(blackPiece)
-				takeableMoves = blackPiece.takeableMoves((bi,bj), (wi,wj), self.board)
-				if (wi,wj) in takeableMoves:
-					takeableWhitePieces.append((whitePiece, (wi,wj)))
-		return takeableWhitePieces
 
 	def isCheck(self, verbose=True):
 		blackIsCheck = self.isCheckBlack()
@@ -625,34 +523,28 @@ class Game:
 		print("------------------------------------")
 		return (blackIsCheck, whiteIsCheck)
 
-	def isCheckBlack(self, board=None):
-		if not board: 
-			board = self.board
-
+	def isCheckBlack(self):
 		blackKing = None
 		for piece in self.blackPiecesInGame:
 			if isinstance(piece, King):
 				blackKing = piece
-		posBlackKing = self.getCurrentPosOfPiece(blackKing) if not board else self.getCurrentPosOfPieceDuringCheckmate(blackKing, board)
+		posBlackKing = self.getCurrentPosOfPiece(blackKing)
 		for whitePiece in self.whitePiecesInGame:
-			posWhitePiece = self.getCurrentPosOfPiece(whitePiece) if not board else self.getCurrentPosOfPieceDuringCheckmate(whitePiece, board)
-			takeableMoves = whitePiece.takeableMoves(posWhitePiece, None, board)
+			posWhitePiece = self.getCurrentPosOfPiece(whitePiece)
+			takeableMoves = whitePiece.takeableMoves(posWhitePiece, None, self.board)
 			if posBlackKing in takeableMoves:
 				return True
 		return False
 					
-	def isCheckWhite(self, board=None):
-		if not board: 
-			board = self.board
-		
+	def isCheckWhite(self):
 		whiteKing = None
 		for piece in self.whitePiecesInGame:
 			if isinstance(piece, King):
 				whiteKing = piece
-		posWhiteKing = self.getCurrentPosOfPiece(whiteKing) if not board else self.getCurrentPosOfPieceDuringCheckmate(whiteKing, board)
+		posWhiteKing = self.getCurrentPosOfPiece(whiteKing)
 		for blackPiece in self.whitePiecesInGame:
-			posBlackPiece = self.getCurrentPosOfPiece(blackPiece) if not board else self.getCurrentPosOfPieceDuringCheckmate(blackPiece, board)
-			takeableMoves = blackPiece.takeableMoves(posBlackPiece, None, board)
+			posBlackPiece = self.getCurrentPosOfPiece(blackPiece)
+			takeableMoves = blackPiece.takeableMoves(posBlackPiece, None, self.board)
 			if posWhiteKing in takeableMoves:
 				return True
 		return False
@@ -674,25 +566,96 @@ class Game:
 					blackKing = piece
 			r, c = self.getCurrentPosOfPiece(blackKing)
 			possibleMovesKing = blackKing.possibleMoves(r, c)
-			originalBoard = self.board
-			possibleBoards = []
-			for move in possibleMovesKing:
-				print("#",self.getCurrentPosOfPiece(blackKing))
-				possibleBoards.append(self.moveDuringCheckmate(blackKing, move))
-			print("----")
-			movesCanSolve = []
-			for board in possibleBoards:
-				movesCanSolve.append(self.isCheckBlack(board))
-			self.printBoard()
-			print(movesCanSolve)
-			if any(move for move in movesCanSolve):
-				return True
+			print(possibleMovesKing)
+			print("))")
+
+			for whitePiece in self.whitePiecesInGame:
+				wr, wc = self.getCurrentPosOfPiece(whitePiece)
+				possibleMovesWhitePiece = whitePiece.possibleMoves(wr, wc)
+				legalMovesWhitePiece = self.legalMoves(whitePiece, (r,c))
+				takeableMovesWhitePiece = whitePiece.takeableMoves((wr,wc), None, self.board)
+				# print(possibleMovesWhitePiece)
+				# print(list(set(possibleMovesKing) & set(takeableMovesWhitePiece)))
 		return False
 
 	def isCheckmateWhite(self):
 		if self.isCheckWhite():
 
 			return True
+		return False
+
+	def rokade(self, color):
+		if color == pieceColor.Black:
+			return self.rokadeBlack()
+		elif color == pieceColor.White:
+			return self.rokadeWhite()
+
+	def rokadeBlack(self):
+		rookLongRokade = self.getPieceOnPosition((0,0))
+		blackKing = self.getPieceOnPosition((0,4))
+		rookShortRokade = self.getPieceOnPosition((0,7))
+
+		rokadeMoves = []
+		
+		if not self.isCheckBlack():
+			if not isinstance(rookLongRokade, NoType) and not isinstance(blackKing, NoType):
+				if isinstance(self.getPieceOnPosition((0,1)), NoType) and \
+				   isinstance(self.getPieceOnPosition((0,2)), NoType) and \
+				   isinstance(self.getPieceOnPosition((0,3)), NoType):
+					if not self.checkIfBlackKingInCheckOnPositions([(0,2),(0,3)]):	# Dit kijkt zowel plaatsen waar hij over zou gaan als plaats waar hij terechtkomt
+						print("BLACK LONG ROKADE POSSIBLE")
+						self.blackLongRokadePossible = True
+						rokadeMoves.extend([(0,2),(0,3)])
+			if not isinstance(rookShortRokade, NoType) and not isinstance(blackKing, NoType):
+				if isinstance(self.getPieceOnPosition((0,5)), NoType) and \
+				   isinstance(self.getPieceOnPosition((0,6)), NoType):
+					if not self.checkIfBlackKingInCheckOnPositions([(0,5),(0,6)]):
+						print("BLACK SHORT ROKADE POSSIBLE")
+						self.blackShortRokadePossible = True
+						rokadeMoves.extend([(0,5),(0,6)])
+		return rokadeMoves
+
+	def checkIfBlackKingInCheckOnPositions(self, positions):
+		for move in positions:
+			for whitePiece in self.whitePiecesInGame:
+				posWhitePiece = self.getCurrentPosOfPiece(whitePiece)
+				takeableMoves = whitePiece.takeableMoves(posWhitePiece, None, self.board)
+				if move in takeableMoves:
+					return True
+		return False
+
+	def rokadeWhite(self):
+		rookLongRokade = self.getPieceOnPosition((7,0))
+		whiteKing = self.getPieceOnPosition((7,4))
+		rookShortRokade = self.getPieceOnPosition((7,7))
+		
+		rokadeMoves = []
+		
+		if not self.isCheckWhite():
+			if not isinstance(rookLongRokade, NoType) and not isinstance(whiteKing, NoType):
+				if isinstance(self.getPieceOnPosition((7,1)), NoType) and \
+				   isinstance(self.getPieceOnPosition((7,2)), NoType) and \
+				   isinstance(self.getPieceOnPosition((7,3)), NoType):
+					if not self.checkIfWhiteKingInCheckOnPositions([(7,2),(7,3)]):
+						print("WHITE LONG ROKADE POSSIBLE")
+						self.whiteLongRokadePossible = True
+						rokadeMoves.extend([(7,2),(7,3)])
+			if not isinstance(rookShortRokade, NoType) and not isinstance(whiteKing, NoType):
+				if isinstance(self.getPieceOnPosition((7,5)), NoType) and \
+				   isinstance(self.getPieceOnPosition((7,6)), NoType):
+					if not self.checkIfWhiteKingInCheckOnPositions([(7,5),(7,6)]):
+						print("WHITE SHORT ROKADE POSSIBLE")
+						self.whiteShortRokadePossible = True
+						rokadeMoves.extend([(7,5),(7,6)])
+		return rokadeMoves
+
+	def checkIfWhiteKingInCheckOnPositions(self, positions):
+		for move in positions:
+			for blackPiece in self.blackPiecesInGame:
+				posblackPiece = self.getCurrentPosOfPiece(blackPiece)
+				takeableMoves = blackPiece.takeableMoves(posblackPiece, None, self.board)
+				if move in takeableMoves:
+					return True
 		return False
 
 	def pat(self, color):
@@ -705,6 +668,33 @@ class Game:
 		self.checkmate = False
 		self.check = False
 		self.colorInCheckmate = None
+
+	def boardToString(self):
+		result = ""
+		color = ""
+		for i in range(0, 8):
+			comma = ","
+			for j in range(0, 8):
+				color = "_W" if self.board[i][j].color() == pieceColor.White else "_B"
+				selected = "_T" if self.board[i][j].selected else "_F"
+				if j == 7:
+					comma = ""
+				if isinstance(self.board[i][j], Pawn):
+					result += "P" + color + comma
+				elif isinstance(self.board[i][j], Rook):
+					result += "R" + color + comma
+				elif isinstance(self.board[i][j], Knight):
+					result += "KN" + color + comma
+				elif isinstance(self.board[i][j], Bishop):
+					result += "B" + color + comma
+				elif isinstance(self.board[i][j], Queen):
+					result += "Q" + color + comma
+				elif isinstance(self.board[i][j], King):
+					result += "K" + color + comma
+				else:
+					result += "x" + comma
+			result += "\n"
+		return result
 
 	def printBoard(self):
 		result = ""
@@ -744,7 +734,24 @@ class Game:
 			print("> BOARD AT TIME ", self.time, ": MOVE " + str(piece) + " FROM ", curPos, " TO ", newPos)
 			print("--------------------------------------------------------------")
 			self.printBoard()
-			# print("> BLACK PIECES IN DANGER:", self.findAllTakeableBlackPieces())
-			# print("> WHITE PIECES IN DANGER:", self.findAllTakeableWhitePieces())
 		self.isCheck()
 		self.isCheckmate()
+
+	def reset(self):
+		self.board = [[NoType(pieceColor.White)] * 8 for i in range(8)]
+		self.time = 0
+
+		self.blackPiecesInGame = []
+		self.takenBlackPieces = []
+		self.whitePiecesInGame = []
+		self.takenWhitePieces = []
+
+		self.pawnToPromote = None
+		self.check = False
+		self.checkmate = False
+		self.colorInCheckmate = None
+
+		self.blackLongRokadePossible = False
+		self.blackShortRokadePossible = False
+		self.whiteLongRokadePossible = False
+		self.whiteShortRokadePossible = False

@@ -47,6 +47,7 @@ class Pawn(ChessPiece):
 	def __init__(self, c):
 		super(Pawn, self).__init__(c)
 		self.firstMove = True
+		self.setImage()
 
 	def piece(self):
 		return Piece(pieceType.Pawn, self.color())
@@ -133,7 +134,8 @@ class Pawn(ChessPiece):
 class Rook(ChessPiece):
 	def __init__(self, c):
 		super(Rook, self).__init__(c)
-
+		self.setImage()
+		
 	def piece(self):
 		return Piece(pieceType.Rook, self.color())
 
@@ -535,6 +537,7 @@ class Rook(ChessPiece):
 class Knight(ChessPiece):
 	def __init__(self, c):
 		super(Knight, self).__init__(c)
+		self.setImage()
 
 	def piece(self):
 		return Piece(pieceType.Knight, self.color())
@@ -591,6 +594,7 @@ class Knight(ChessPiece):
 class Bishop(ChessPiece):
 	def __init__(self, c):
 		super(Bishop, self).__init__(c)
+		self.setImage()
 
 	def piece(self):
 		return Piece(pieceType.Bishop, self.color())
@@ -1001,6 +1005,7 @@ class Bishop(ChessPiece):
 class Queen(ChessPiece):
 	def __init__(self, c):
 		super(Queen, self).__init__(c)
+		self.setImage()
 
 	def piece(self):
 		return Piece(pieceType.Queen, self.color())
@@ -1043,6 +1048,7 @@ class Queen(ChessPiece):
 class King(ChessPiece):
 	def __init__(self, c):
 		super(King, self).__init__(c)
+		self.setImage()
 
 	def piece(self):
 		return Piece(pieceType.King, self.color())

@@ -3,12 +3,13 @@ from tkinter import *
 from math import floor
 from chesspiece import *
 from tkinter import *
+import tkinter.filedialog
 from game import Game
 import mainwindow
+import csv
 
 class GameBoard(tk.Frame):
 	def __init__(self, parent, game, rows=8, columns=8, size=64, color1="white", color2="blue"):
-		'''size is the size of a square, in pixels'''
 		self.parent = parent
 		self.game = game
 		self.previousGame = None
@@ -25,9 +26,6 @@ class GameBoard(tk.Frame):
 		self.blackPiecesListbox = Listbox(self.parent)
 		self.whitePiecesListbox = Listbox(self.parent)
 
-		for piece in self.pieces:
-			piece.setImage()
-
 		canvas_width = columns * size
 		canvas_height = rows * size
 
@@ -35,23 +33,17 @@ class GameBoard(tk.Frame):
 		self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0,
 								width=canvas_width, height=canvas_height, background="bisque")
 		
-		# self.blackPiecesListbox.place(x=0, y=0)
-		# self.whitePiecesListbox.place(x=0, y=1)
 		self.canvas.pack(side="top", fill="both", expand=True, padx=2, pady=2)
-		# self.blackPiecesListbox.pack()
-		# self.whitePiecesListbox.pack()
 
 		self.menubar = Menu(self.parent)
 		self.menubar.add_command(label="New", command=self.newGame)
 		self.menubar.add_command(label="Quit", command=self.parent.quit)
-		# self.menubar.add_command(label="Black Pieces", command=self.getTakenBlackPieces())
-		# self.menubar.add_command(label="White Pieces", command=self.getTakenWhitePieces())
+		self.menubar.add_command(label="Save", command=self.save)
+		self.menubar.add_command(label="Open", command=self.open)
 		self.parent.config(menu=self.menubar)
 
 		self.drawAllPieces()
 
-		# this binding will cause a refresh if the user interactively
-		# changes the window size
 		self.canvas.bind("<Configure>", self.refresh)
 		self.canvas.bind("<Button-1>", self.click)
 
@@ -62,7 +54,6 @@ class GameBoard(tk.Frame):
 			self.imagesBoard[r][c] = self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
 	def click(self, event):
-		# Figure out which square we've clicked
 		col_size = row_size = event.widget.master.size
 
 		c = floor(event.x / col_size)
@@ -87,11 +78,12 @@ class GameBoard(tk.Frame):
 					
 					self.drawLegalMovesAndNotBlockedInPath(piece, r, c)
 					self.drawTakeableMoves(piece, r, c)
+					if isinstance(piece, King):
+						self.drawRokadeMoves(piece)
 
 					self.firstClick = False
 			else:	
 				if self.previousPiece != piece:
-					print("A")
 					prevR, prevC = self.game.getCurrentPosOfPiece(self.previousPiece)
 					prevX1 = (prevC * self.size)
 					prevY1 = (prevR * self.size)
@@ -102,18 +94,14 @@ class GameBoard(tk.Frame):
 						prevLastColor = "white" if (prevR + prevC) % 2 == 0 else "blue"
 						self.resetDrawLegalMovesAndNotBlockedInPath(self.previousPiece, prevR, prevC)
 						self.resetDrawTakeableMoves(self.previousPiece, prevR, prevC)
+						self.resetDrawRokadeMoves(self.previousPiece)
+
 						if self.game.move(self.previousPiece, (r,c)):
-							print("B")
 							self.whiteTurn = not self.whiteTurn
-							# self.canvas.delete(self.imagesBoard[prevR][prevC])
 							self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
 							self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
-							# self.canvas.delete("image")
-							self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
 							self.drawAllPieces()
-							# self.imagesBoard[prevR][prevC] = None
 						else:
-							print("C")
 							self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
 							self.canvas.create_image(prevC * self.size, prevR * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
 
@@ -122,31 +110,28 @@ class GameBoard(tk.Frame):
 
 						self.previousPiece.selected = False
 					else:
-						print("D")
 						self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
 						self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
 					self.previousPiece = None
 
 				elif self.previousPiece == piece:
-					print("E")
 					piece.selected = False
 					self.previousPiece = None
 					self.resetDrawLegalMovesAndNotBlockedInPath(piece, r, c)
 					self.resetDrawTakeableMoves(piece, r, c)
+					self.resetDrawRokadeMoves(piece)
 					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
 					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
 
 				elif not piece.selected:
-					print("F")
 					piece.selected = True
 					if not isinstance(piece, NoType):
 						self.previousPiece = piece
 					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill="green", tags="square")
 					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 				else:
-					print("G")
 					piece.selected = False
 					if not isinstance(piece, NoType):
 						self.previousPiece = piece
@@ -154,17 +139,24 @@ class GameBoard(tk.Frame):
 					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
 				self.firstClick = True
-			print(piece)
 
-		# See if check or checkmate
-		# self.game.isCheckmate(pieceColor.Black)
-		# self.game.isCheckmate(pieceColor.White)
-		# blackIsCheck = self.game.isCheck(pieceColor.Black)
-		# whiteIsCheck = self.game.isCheck(pieceColor.White)
-		# if blackIsCheck or whiteIsCheck:
-		# 	color = "Black"
-		# 	if whiteIsCheck: color = "White" 
-		# 	return messagebox.showinfo("Chess", color + " is in chess!")
+		self.drawCheck()
+
+	def drawCheck(self):
+		if self.game.isCheckBlack():
+			kingR, kingC = self.game.getBlackKingPosition()
+			kingX1 = (kingC * self.size)
+			kingY1 = (kingR * self.size)
+			kingX2 = kingX1 + self.size
+			kingY2 = kingY1 + self.size
+			self.canvas.create_rectangle(kingX1, kingY1, kingX2, kingY2, width=4, outline="red", tags="rokade")
+		if self.game.isCheckWhite():
+			r, c = self.game.getWhiteKingPosition()
+			kingX1 = (kingC * self.size)
+			kingY1 = (kingR * self.size)
+			kingX2 = kingX1 + self.size
+			kingY2 = kingY1 + self.size
+			self.canvas.create_rectangle(kingX1, kingY1, kingX2, kingY2, width=4, outline="red", tags="rokade")
 
 	def drawLegalMovesAndNotBlockedInPath(self, piece, r, c):
 		for move in piece.legalMovesAndNotBlockedInPath((r,c), None, self.game.board):
@@ -185,6 +177,16 @@ class GameBoard(tk.Frame):
 			takeablePiece = self.game.getPieceOnPosition((moveR, moveC))
 			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill="red", tags="square")
 			self.canvas.create_image(moveC * self.size, moveR * self.size, anchor=NW, image=takeablePiece.image, tags="image")
+
+	def drawRokadeMoves(self, piece):
+		rokadeMoves = self.game.rokade(piece.color())
+		for move in rokadeMoves:
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, width=4,outline="magenta", tags="rokade")
 
 	def resetDrawLegalMovesAndNotBlockedInPath(self, piece, r, c):
 		for move in piece.legalMovesAndNotBlockedInPath((r,c), None, self.game.board):
@@ -208,6 +210,18 @@ class GameBoard(tk.Frame):
 			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill=lastColor, tags="square")
 			self.canvas.create_image(moveC * self.size, moveR * self.size, anchor=NW, image=takeablePiece.image, tags="image")
 
+	def resetDrawRokadeMoves(self, piece):
+		rokadeMoves = self.game.rokade(piece.color())
+		self.canvas.delete("rokade")
+		for move in rokadeMoves:
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			lastColor = "white" if (moveR + moveC) % 2 == 0 else "blue"
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", tags="rokade")
+
 	def getTakenBlackPieces(self):
 		for piece in self.game.takenBlackPieces:
 			if piece not in self.blackPiecesListbox:
@@ -219,7 +233,6 @@ class GameBoard(tk.Frame):
 				self.whitePiecesListbox.insert(END, piece)
 
 	def refresh(self, event):
-		'''Redraw the board, possibly in response to window being resized'''
 		xsize = int((event.width-1) / self.columns)
 		ysize = int((event.height-1) / self.rows)
 		self.size = min(xsize, ysize)
@@ -241,14 +254,7 @@ class GameBoard(tk.Frame):
 		self.canvas.tag_raise("piece")
 		self.canvas.tag_lower("square")
 
-	# def addpiece(self, name, image, row=0, column=0):
-	# 	'''Add a piece to the playing board'''
-	# 	self.canvas.create_image(0,0, image=image, tags=(name, "piece"), anchor="c")
-	# 	self.placepiece(name, row, column)
-
 	def placepiece(self, name, row, column):
-		'''Place a piece at the given row/column'''
-		# self.pieces[name] = (row, column)
 		x0 = (column * self.size) + int(self.size/2)
 		y0 = (row * self.size) + int(self.size/2)
 		self.canvas.coords(name, x0, y0)
@@ -258,6 +264,72 @@ class GameBoard(tk.Frame):
 		self.game = Game(self.parent)
 		self.game.setStartBoard()
 		self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
-		for piece in self.pieces:
-			piece.setImage()
 		self.drawAllPieces()
+
+	def save(self):
+		fileName = tkinter.filedialog.askopenfilename()
+
+		if fileName:
+			with open(fileName, 'w') as f:
+				f.write(self.game.boardToString())
+
+	def open(self):
+		fileName = tkinter.filedialog.askopenfilename()
+		
+		self.game.reset()
+
+		if fileName:
+			with open(fileName, 'r') as f:
+				reader = csv.reader(f)
+				lists = list(reader)
+
+				for i, l in enumerate(lists):
+					for j, p in enumerate(l):
+						if p == "P_B":	
+							pawn = Pawn(pieceColor.Black)
+							self.game.board[i][j] = pawn
+							self.game.blackPiecesInGame.append(pawn)
+						elif p == "R_B":
+							rook = Rook(pieceColor.Black)
+							self.game.board[i][j] = rook
+							self.game.blackPiecesInGame.append(rook)
+						elif p == "B_B":
+							bishop = Bishop(pieceColor.Black)
+							self.game.board[i][j] = bishop
+							self.game.blackPiecesInGame.append(bishop)
+						elif p == "Kn_B":
+							knight = Knight(pieceColor.Black)
+							self.game.board[i][j] = knight
+							self.game.blackPiecesInGame.append(knight)
+						elif p == "Q_B":
+							queen = Queen(pieceColor.Black)
+							self.game.board[i][j] = queen
+							self.game.blackPiecesInGame.append(queen)
+						elif p == "K_B":
+							king = King(pieceColor.Black)
+							self.game.board[i][j] = king
+							self.game.blackPiecesInGame.append(king)
+						elif p == "P_W":	
+							pawn = Pawn(pieceColor.White)
+							self.game.board[i][j] = pawn
+							self.game.whitePiecesInGame.append(pawn)
+						elif p == "R_W":
+							rook = Rook(pieceColor.White)
+							self.game.board[i][j] = rook
+							self.game.whitePiecesInGame.append(rook)
+						elif p == "B_W":
+							bishop = Bishop(pieceColor.White)
+							self.game.board[i][j] = bishop
+							self.game.whitePiecesInGame.append(bishop)
+						elif p == "Kn_W":
+							knight = Knight(pieceColor.White)
+							self.game.board[i][j] = knight
+							self.game.whitePiecesInGame.append(knight)
+						elif p == "Q_W":
+							queen = Queen(pieceColor.White)
+							self.game.board[i][j] = queen
+							self.game.whitePiecesInGame.append(queen)
+						elif p == "K_W":
+							king = King(pieceColor.White)
+							self.game.board[i][j] = king
+							self.game.whitePiecesInGame.append(king)
