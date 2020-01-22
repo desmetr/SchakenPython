@@ -20,6 +20,10 @@ class GameBoard(tk.Frame):
 		self.previousPiece = None
 		self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
 		self.imagesBoard = [[None] * 8 for i in range(8)]
+		self.whiteTurn = True
+		self.firstClick = True
+		self.blackPiecesListbox = Listbox(self.parent)
+		self.whitePiecesListbox = Listbox(self.parent)
 
 		for piece in self.pieces:
 			piece.setImage()
@@ -30,11 +34,18 @@ class GameBoard(tk.Frame):
 		tk.Frame.__init__(self, parent)
 		self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0,
 								width=canvas_width, height=canvas_height, background="bisque")
+		
+		# self.blackPiecesListbox.place(x=0, y=0)
+		# self.whitePiecesListbox.place(x=0, y=1)
 		self.canvas.pack(side="top", fill="both", expand=True, padx=2, pady=2)
+		# self.blackPiecesListbox.pack()
+		# self.whitePiecesListbox.pack()
 
 		self.menubar = Menu(self.parent)
 		self.menubar.add_command(label="New", command=self.newGame)
-		# self.menubar.add_command(label="Quit!", command=root.quit)
+		self.menubar.add_command(label="Quit", command=self.parent.quit)
+		# self.menubar.add_command(label="Black Pieces", command=self.getTakenBlackPieces())
+		# self.menubar.add_command(label="White Pieces", command=self.getTakenWhitePieces())
 		self.parent.config(menu=self.menubar)
 
 		self.drawAllPieces()
@@ -51,12 +62,6 @@ class GameBoard(tk.Frame):
 			self.imagesBoard[r][c] = self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
 	def click(self, event):
-		# See if check or checkmate
-		self.game.isCheckmate(pieceColor.Black)
-		self.game.isCheckmate(pieceColor.White)
-		self.game.isCheck(pieceColor.Black)
-		self.game.isCheck(pieceColor.White)
-
 		# Figure out which square we've clicked
 		col_size = row_size = event.widget.master.size
 
@@ -69,78 +74,149 @@ class GameBoard(tk.Frame):
 		y2 = y1 + self.size
 
 		lastColor = "white" if (r + c) % 2 == 0 else "blue"
-		if self.previousPiece:
-			print("A")
-			prevR, prevC = self.game.getCurrentPosOfPiece(self.previousPiece)
-			prevX1 = (prevC * self.size)
-			prevY1 = (prevR * self.size)
-			prevX2 = prevX1 + self.size
-			prevY2 = prevY1 + self.size
 
-			if (prevR, prevC) != (r,c):
-				prevLastColor = "white" if (prevR + prevC) % 2 == 0 else "blue"
-				if self.game.move(self.previousPiece, (r,c)):
-					print("F")
-					# self.canvas.delete(self.imagesBoard[prevR][prevC])
-					self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
-					self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
-					self.canvas.delete("image")
-					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
-					self.drawAllPieces()
-					# self.imagesBoard[prevR][prevC] = None
-				else:
-					print("B")
-					self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
-					self.canvas.create_image(prevC * self.size, prevR * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
+		if not self.previousPiece and self.whiteTurn != (piece.color() == pieceColor.White):
+			messagebox.showinfo("Wrong turn", "Not your turn!")
+			return 
+		else:
+			if self.firstClick:
+				if not isinstance(piece, NoType):
+					self.previousPiece = piece
+					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill="green", tags="square")
+					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
+					
+					self.drawLegalMovesAndNotBlockedInPath(piece, r, c)
+					self.drawTakeableMoves(piece, r, c)
 
+					self.firstClick = False
+			else:	
+				if self.previousPiece != piece:
+					print("A")
+					prevR, prevC = self.game.getCurrentPosOfPiece(self.previousPiece)
+					prevX1 = (prevC * self.size)
+					prevY1 = (prevR * self.size)
+					prevX2 = prevX1 + self.size
+					prevY2 = prevY1 + self.size
+
+					if (prevR, prevC) != (r,c):
+						prevLastColor = "white" if (prevR + prevC) % 2 == 0 else "blue"
+						self.resetDrawLegalMovesAndNotBlockedInPath(self.previousPiece, prevR, prevC)
+						self.resetDrawTakeableMoves(self.previousPiece, prevR, prevC)
+						if self.game.move(self.previousPiece, (r,c)):
+							print("B")
+							self.whiteTurn = not self.whiteTurn
+							# self.canvas.delete(self.imagesBoard[prevR][prevC])
+							self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
+							self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
+							# self.canvas.delete("image")
+							self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
+							self.drawAllPieces()
+							# self.imagesBoard[prevR][prevC] = None
+						else:
+							print("C")
+							self.canvas.create_rectangle(prevX1, prevY1, prevX2, prevY2, outline="black", fill=prevLastColor, tags="square")
+							self.canvas.create_image(prevC * self.size, prevR * self.size, anchor=NW, image=self.previousPiece.image, tags="image")
+
+							self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
+							self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
+
+						self.previousPiece.selected = False
+					else:
+						print("D")
+						self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
+						self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
+
+					self.previousPiece = None
+
+				elif self.previousPiece == piece:
+					print("E")
+					piece.selected = False
+					self.previousPiece = None
+					self.resetDrawLegalMovesAndNotBlockedInPath(piece, r, c)
+					self.resetDrawTakeableMoves(piece, r, c)
 					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
 					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
-				print("G")
-				self.previousPiece.selected = False
-			else:
-				print("E")
-				self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
-				self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
-			self.previousPiece = None
 
-		elif not piece.selected:
-			print("C")
-			piece.selected = True
-			if not isinstance(piece, NoType):
-				self.previousPiece = piece
-			self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill="green", tags="square")
-			self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
-		else:
-			print("D")
-			piece.selected = False
-			if not isinstance(piece, NoType):
-				self.previousPiece = piece
-			self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
-			self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
-		# print(piece)
+				elif not piece.selected:
+					print("F")
+					piece.selected = True
+					if not isinstance(piece, NoType):
+						self.previousPiece = piece
+					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill="green", tags="square")
+					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
+				else:
+					print("G")
+					piece.selected = False
+					if not isinstance(piece, NoType):
+						self.previousPiece = piece
+					self.canvas.create_rectangle(x1, y1, x2, y2, outline="black", fill=lastColor, tags="square")
+					self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image, tags="image")
 
-		# if not isinstance(piece, NoType):
-		# 	self.game.move(self.selected_piece[1], position)
-		# 	self.selected_piece = None
-		# 	self.hilighted = None
-		# 	self.pieces = {}
-		# 	self.refresh()
-		# 	self.draw_pieces()
+				self.firstClick = True
+			print(piece)
 
-		# self.hilight(position)
-		# self.refresh()
-		
-		# for image in self.imagesBoard:
-		# 	# r, c = self.game.getCurrentPosOfPiece(piece)
-		# 	self.canvas.delete(image)
+		# See if check or checkmate
+		# self.game.isCheckmate(pieceColor.Black)
+		# self.game.isCheckmate(pieceColor.White)
+		# blackIsCheck = self.game.isCheck(pieceColor.Black)
+		# whiteIsCheck = self.game.isCheck(pieceColor.White)
+		# if blackIsCheck or whiteIsCheck:
+		# 	color = "Black"
+		# 	if whiteIsCheck: color = "White" 
+		# 	return messagebox.showinfo("Chess", color + " is in chess!")
 
-		# self.pieces = self.game.blackPiecesInGame + self.game.whitePiecesInGame
-		# for piece in self.pieces:
-		# 	r, c = self.game.getCurrentPosOfPiece(piece)
-		# 	# self.canvas.delete(self.imagesBoard[r][c])
-		# 	# print(r,c)
-		# 	self.canvas.create_image(c * self.size, r * self.size, anchor=NW, image=piece.image)
+	def drawLegalMovesAndNotBlockedInPath(self, piece, r, c):
+		for move in piece.legalMovesAndNotBlockedInPath((r,c), None, self.game.board):
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill="yellow", tags="square")
+
+	def drawTakeableMoves(self, piece, r, c):
+		for move in piece.takeableMoves((r,c), None, self.game.board):
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			takeablePiece = self.game.getPieceOnPosition((moveR, moveC))
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill="red", tags="square")
+			self.canvas.create_image(moveC * self.size, moveR * self.size, anchor=NW, image=takeablePiece.image, tags="image")
+
+	def resetDrawLegalMovesAndNotBlockedInPath(self, piece, r, c):
+		for move in piece.legalMovesAndNotBlockedInPath((r,c), None, self.game.board):
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			lastColor = "white" if (moveR + moveC) % 2 == 0 else "blue"
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill=lastColor, tags="square")
+
+	def resetDrawTakeableMoves(self, piece, r, c):
+		for move in piece.takeableMoves((r,c), None, self.game.board):
+			moveR, moveC = move
+			moveX1 = (moveC * self.size)
+			moveY1 = (moveR * self.size)
+			moveX2 = moveX1 + self.size
+			moveY2 = moveY1 + self.size
+			lastColor = "white" if (moveR + moveC) % 2 == 0 else "blue"
+			takeablePiece = self.game.getPieceOnPosition((moveR, moveC))
+			self.canvas.create_rectangle(moveX1, moveY1, moveX2, moveY2, outline="black", fill=lastColor, tags="square")
+			self.canvas.create_image(moveC * self.size, moveR * self.size, anchor=NW, image=takeablePiece.image, tags="image")
+
+	def getTakenBlackPieces(self):
+		for piece in self.game.takenBlackPieces:
+			if piece not in self.blackPiecesListbox:
+				self.blackPiecesListbox.insert(END, piece)
+
+	def getTakenWhitePieces(self):
+		for piece in self.game.takenWhitePieces:
+			if piece not in self.whitePiecesListbox:
+				self.whitePiecesListbox.insert(END, piece)
 
 	def refresh(self, event):
 		'''Redraw the board, possibly in response to window being resized'''
