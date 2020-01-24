@@ -1,4 +1,4 @@
-from chessboard import ChessBoard
+from enums import *
 from chesspiece import *
 from game import Game
 from tkinter import Tk, Button
@@ -11,10 +11,11 @@ class MainWindow():
 		root.title("Schaken")
 
 		self.game = Game(root)
-		# self.game.setStartBoard()
+		self.game.setStartBoard()
+		# self.game.setEnPassantBoard()
 		# self.game.setRokadeBoard()
 		# self.game.setCheckBoard()	
-		self.game.setCheckmateBoard()	
+		# self.game.setCheckmateBoard()	
 		# self.game.setPawnBoard()
 		# self.game.setRookBoard()
 		# self.game.setKnightBoard()

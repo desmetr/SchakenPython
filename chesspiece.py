@@ -1,4 +1,4 @@
-from chessboard import pieceColor, pieceType, Piece
+from enums import *
 from tkinter import *
 import itertools
 
@@ -37,10 +37,10 @@ class NoType(ChessPiece):
 	def possibleMoves(self, r, c, firstMoveBlack, firstMoveWhite):
 		return []
 
-	def legalMovesAndNotBlockedInPath(self, curPos, newPos):
+	def legalMovesAndNotBlockedInPath(self, curPos, newPos, board):
 		return []
 
-	def takeableMoves(self, r, c):
+	def takeableMoves(self, r, c, board):
 		return []
 
 class Pawn(ChessPiece):
@@ -67,6 +67,27 @@ class Pawn(ChessPiece):
 		else:
 			return r == 0
 
+	def enPassantLeft(self, r, c, board):
+		if self.color() == pieceColor.Black:
+			if r < 7 and c > 0:
+				return isinstance(board[r][c - 1], Pawn) and board[r][c - 1].color() == pieceColor.White and \
+					   isinstance(board[r + 1][c - 1], NoType) and isinstance(board[r + 1][c], NoType)
+		else:
+			if r > 0 and c > 0:
+				return isinstance(board[r][c - 1], Pawn) and board[r][c - 1].color() == pieceColor.Black and \
+					   isinstance(board[r - 1][c - 1], NoType) and isinstance(board[r - 1][c], NoType)
+
+	def enPassantRight(self, r, c, board):
+		if self.color() == pieceColor.Black:
+			if r < 7 and c < 7:
+				return isinstance(board[r][c + 1], Pawn) and board[r][c + 1].color() == pieceColor.White and \
+				   isinstance(board[r + 1][c + 1], NoType) and isinstance(board[r + 1][c], NoType)
+		else:
+			if r > 0 and c < 7:
+				return isinstance(board[r][c + 1], Pawn) and board[r][c + 1].color() == pieceColor.Black and \
+					   isinstance(board[r - 1][c + 1], NoType) and isinstance(board[r - 1][c], NoType)
+
+
 	def possibleMoves(self, r, c):
 		possibleMoves = []
 		if self.color() == pieceColor.Black:
@@ -83,23 +104,20 @@ class Pawn(ChessPiece):
 		return list(set(possibleMoves))
 
 	def legalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		newPositions = []
-		legalMovesAndNotBlocked = []
+		path = []; newPositions = []; legalMovesAndNotBlocked = []
 
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMoves(ci,cj)
+			newPositions = self.possibleMoves(curPos[0],curPos[1])
 		for newPos in newPositions:
 			ni, nj = newPos
 			if self.color() == pieceColor.Black:
-				for i in range(ci + 1, ni + 1):
+				for i in range(curPos[0] + 1, ni + 1):
 					if (i, nj) != curPos:
 						path.append((i, nj))
 			else:
-				for i in range(ci, ni - 1, -1):
+				for i in range(curPos[0], ni - 1, -1):
 					if (i, nj) != curPos:
 						path.append((i, nj))
 			
@@ -111,22 +129,21 @@ class Pawn(ChessPiece):
 		return list(set(legalMovesAndNotBlocked))
 
 	def takeableMoves(self, curPos, newPos, board):
-		temp = []
-		takeableMoves = []
-		ci, cj = curPos
-		if self.color() == pieceColor.Black:
-			if ci + 1 < 8:
-				if cj - 1 >= 0: temp.append((ci + 1, cj - 1))
-				if cj + 1 < 8: temp.append((ci + 1, cj + 1))
-		else:
-			if ci - 1 >= 0:
-				if cj - 1 >= 0: temp.append((ci - 1, cj - 1))
-				if cj + 1 < 8: temp.append((ci - 1, cj + 1))
+		takeableMovesTemp = []; takeableMoves = []
 
-		for move in temp:
+		if self.color() == pieceColor.Black:
+			if curPos[0] + 1 < 8:
+				if curPos[1] - 1 >= 0: takeableMovesTemp.append((curPos[0] + 1, curPos[1] - 1))
+				if curPos[1] + 1 < 8: takeableMovesTemp.append((curPos[0] + 1, curPos[1] + 1))
+		else:
+			if curPos[0] - 1 >= 0:
+				if curPos[1] - 1 >= 0: takeableMovesTemp.append((curPos[0] - 1, curPos[1] - 1))
+				if curPos[1] + 1 < 8: takeableMovesTemp.append((curPos[0] - 1, curPos[1] + 1))
+
+		for move in takeableMovesTemp:
 			r, c = move
 			if not isinstance(board[r][c], NoType):
-				if board[r][c].color() != board[ci][cj].color():
+				if board[r][c].color() != board[curPos[0]][curPos[1]].color():
 					takeableMoves.append((r,c))
 
 		return list(set(takeableMoves))
@@ -155,49 +172,36 @@ class Rook(ChessPiece):
 			   self.possibleMovesRight(r,c)
 
 	def possibleMovesUp(self, r, c):
-		possibleMoves = []
 		possibleRowsToGoUp = r
-		# Rows to go up
-		for i in range(possibleRowsToGoUp + 1):
-			if not (i, c) == (r, c):
-				possibleMoves.append((i, c))
+
+		possibleMoves = [(i, c) for i in range(possibleRowsToGoUp + 1) if not (i, c) == (r, c)]
 		if (r,c) in possibleMoves:
 			possibleMoves.remove((r,c))
 
 		return list(set(possibleMoves))
 
 	def possibleMovesDown(self, r, c):
-		possibleMoves = []
 		possibleRowsToGoDown = 7 - r
-		# Rows to go down
-		for i in range(r, r + possibleRowsToGoDown + 1):
-			if not (i, c) == (r, c):
-				possibleMoves.append((i, c))
+
+		possibleMoves = [(i, c) for i in range(r, r + possibleRowsToGoDown + 1) if not (i, c) == (r, c)]
 		if (r,c) in possibleMoves:
 			possibleMoves.remove((r,c))
 
 		return list(set(possibleMoves))
 
 	def possibleMovesLeft(self, r, c):
-		possibleMoves = []
 		possibleColumnsToGoLeft = c
-		# Columns to go left
-		for i in range(possibleColumnsToGoLeft, -1, -1):
-			if not (r, i) == (r, c):
-				possibleMoves.append((r, i))
+
+		possibleMoves = [(r, i) for i in range(possibleColumnsToGoLeft, -1, -1) if not (r, i) == (r, c)]
 		if (r,c) in possibleMoves:
 			possibleMoves.remove((r,c))
 
 		return list(set(possibleMoves))
 
 	def possibleMovesRight(self, r, c):
-		possibleMoves = []
 		possibleColumnsToGoRight = 7 - c
-		# Columns to go right
-		for i in range(c, c + possibleColumnsToGoRight + 1):
-			if not (r, i) == (r, c):
-				possibleMoves.append((r, i))
 
+		possibleMoves = [(r, i) for i in range(c, c + possibleColumnsToGoRight + 1) if not (r, i) == (r, c)]
 		if (r,c) in possibleMoves:
 			possibleMoves.remove((r,c))
 
@@ -210,33 +214,19 @@ class Rook(ChessPiece):
 			   self.legalMovesAndNotBlockedInPathRight(curPos, newPos, board)
 
 	def legalMovesAndNotBlockedInPathUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Up
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesUp(ci,cj)
+			newPositions = self.possibleMovesUp(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-
-			for i in range(ci - 1, mi, -1):
-				rowIndices.append(i)
-				columnIndices.append(mj)
-			
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+			columnIndices = [move[1]	for i in range(curPos[0] - 1, move[0], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 			zipped.append(move)
 
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -247,31 +237,19 @@ class Rook(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Down
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesDown(ci,cj)
+			newPositions = self.possibleMovesDown(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			for i in range(ci +  1, mi):
-				rowIndices.append(i)
-				columnIndices.append(mj)
-
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(curPos[0] +  1, move[0])]
+			columnIndices = [move[1] for i in range(curPos[0] +  1, move[0])]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 			zipped.append(move)
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -282,33 +260,19 @@ class Rook(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathLeft(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Left
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesLeft(ci,cj)
+			newPositions = self.possibleMovesLeft(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-
-			for j in range(cj - 1, mj, -1):
-				rowIndices.append(ci)
-				columnIndices.append(j)
-
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [curPos[0] for j in range(curPos[1] - 1, move[1], -1)]
+			columnIndices = [j for j in range(curPos[1] - 1, move[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 			zipped.append(move)
 
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -319,33 +283,19 @@ class Rook(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathRight(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Right
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesRight(ci,cj)
+			newPositions = self.possibleMovesRight(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			
-			for j in range(cj + 1, mj,):
-				rowIndices.append(ci)
-				columnIndices.append(j)
-
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [curPos[0] for j in range(curPos[1] + 1, move[1])]
+			columnIndices = [j for j in range(curPos[1] + 1, move[1])]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 			zipped.append(move)
 
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -362,128 +312,87 @@ class Rook(ChessPiece):
 			   self.takeableMovesRight(curPos, newPos, board)
 
 	def takeableMovesUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		newPositions = []
-		takeableMovesUp = []
-		takeableMovesUpTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		newPositions = []; takeableMovesUp = []; takeableMovesUpTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesUp(ci,cj)
+			newPositions = self.possibleMovesUp(curPos[0],curPos[1])
 
 		for newPos in newPositions:
-			ni, nj = newPos
-			if not isinstance(board[ni][nj], NoType) and board[ni][nj].color() != self.color():
+			if not isinstance(board[newPos[0]][newPos[1]], NoType) and board[newPos[0]][newPos[1]].color() != self.color():
 				takeableMovesUpTemp.append(newPos)
 
 		for move in takeableMovesUpTemp:
-			mi, mj = move
-			if move in self.possibleMovesUp(ci, cj):
-				for i in range(ci - 1, mi, -1):
-					rowIndices.append(i)
-					columnIndices.append(mj)
+			if move in self.possibleMovesUp(curPos[0], curPos[1]):
+				rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+				columnIndices = [move[1] for i in range(curPos[0] - 1, move[0], -1)]
+				zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
-				zipped = []
-				for i,j in zip(rowIndices, columnIndices):
-					zipped.append((i,j))
 				if len(zipped) > 0:
-					for zipMove in zipped:
-						zi, zj = zipMove
-						movesOccupied.append(isinstance(board[zi][zj], NoType))
+					movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 					if all(move for move in movesOccupied):
 						takeableMovesUp.append(move)
 				else:
-					if not isinstance(board[mi][mj], NoType):
+					if not isinstance(board[move[0]][move[1]], NoType):
 						takeableMovesUp.append(move)
 				movesOccupied = []; rowIndices = []; columnIndices = []
 		
 		return list(set(takeableMovesUp))
 
 	def takeableMovesDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		newPositions = []
-		takeableMovesDown = []
-		takeableMovesDownTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		newPositions = []; takeableMovesDown = []; takeableMovesDownTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesDown(ci,cj)
+			newPositions = self.possibleMovesDown(curPos[0],curPos[1])
 
 		for newPos in newPositions:
-			ni, nj = newPos
-			if not isinstance(board[ni][nj], NoType) and board[ni][nj].color() != self.color():
+			if not isinstance(board[newPos[0]][newPos[1]], NoType) and board[newPos[0]][newPos[1]].color() != self.color():
 				takeableMovesDownTemp.append(newPos)
 
 		for move in takeableMovesDownTemp:
-			mi, mj = move
-			if move in self.possibleMovesDown(ci,cj):
-				for i in range(ci + 1, mi):
-					rowIndices.append(i)
-					columnIndices.append(mj)
-
-				zipped = []
-				for i,j in zip(rowIndices, columnIndices):
-					zipped.append((i,j))
+			if move in self.possibleMovesDown(curPos[0],curPos[1]):
+				rowIndices = [i for i in range(curPos[0] + 1, move[0])]
+				columnIndices = [move[1] for i in range(curPos[0] + 1, move[0])]
+				zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
 				if len(zipped) > 0:
-					for zipMove in zipped:
-						zi, zj = zipMove
-						movesOccupied.append(isinstance(board[zi][zj], NoType))
+					movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 					if all(move for move in movesOccupied):
 						takeableMovesDown.append(move)
 				else:
-					if not isinstance(board[mi][mj], NoType):
+					if not isinstance(board[move[0]][move[1]], NoType):
 						takeableMovesDown.append(move)	
 				movesOccupied = []; rowIndices = []; columnIndices = []
 		
 		return list(set(takeableMovesDown))
 
 	def takeableMovesLeft(self, curPos, newPos, board):
-		ci, cj = curPos
-		newPositions = []
-		takeableMovesLeft = []
-		takeableMovesLeftTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		newPositions = []; takeableMovesLeft = []; takeableMovesLeftTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesLeft(ci,cj)
+			newPositions = self.possibleMovesLeft(curPos[0],curPos[1])
 
 		for newPos in newPositions:
-			ni, nj = newPos
-			if not isinstance(board[ni][nj], NoType) and board[ni][nj].color() != self.color():
+			if not isinstance(board[newPos[0]][newPos[1]], NoType) and board[newPos[0]][newPos[1]].color() != self.color():
 				takeableMovesLeftTemp.append(newPos)
 
 		for move in takeableMovesLeftTemp:
-			mi, mj = move
-			if move in self.possibleMovesLeft(ci,cj):
-				for i in range(cj - 1, mj, -1):
-					rowIndices.append(mi)
-					columnIndices.append(i)
-
-				zipped = []
-				for i,j in zip(rowIndices, columnIndices):
-					zipped.append((i,j))
+			if move in self.possibleMovesLeft(curPos[0],curPos[1]):
+				rowIndices = [move[0] for i in range(curPos[1] - 1, move[1], -1)]
+				columnIndices = [i for i in range(curPos[1] - 1, move[1], -1)]
+				zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
 				if len(zipped) > 0:
-					for zipMove in zipped:
-						zi, zj = zipMove
-						movesOccupied.append(isinstance(board[zi][zj], NoType))
+					movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 					if all(move for move in movesOccupied):
 						takeableMovesLeft.append(move)
 				else:
-					if not isinstance(board[mi][mj], NoType):
+					if not isinstance(board[move[0]][move[1]], NoType):
 						takeableMovesLeft.append(move)	
 
 				movesOccupied = []; rowIndices = []; columnIndices = []
@@ -491,43 +400,29 @@ class Rook(ChessPiece):
 		return list(set(takeableMovesLeft))
 
 	def takeableMovesRight(self, curPos, newPos, board):
-		ci, cj = curPos
-		newPositions = []
-		takeableMovesRight = []
-		takeableMovesRightTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		newPositions = []; takeableMovesRight = []; takeableMovesRightTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesRight(ci,cj)
+			newPositions = self.possibleMovesRight(curPos[0],curPos[1])
 
 		for newPos in newPositions:
-			ni, nj = newPos
-			if not isinstance(board[ni][nj], NoType) and board[ni][nj].color() != self.color():
+			if not isinstance(board[newPos[0]][newPos[1]], NoType) and board[newPos[0]][newPos[1]].color() != self.color():
 				takeableMovesRightTemp.append(newPos)
 
 		for move in takeableMovesRightTemp:
-			mi, mj = move
-			if move in self.possibleMovesRight(ci,cj):
-				for i in range(cj + 1, mj):
-					rowIndices.append(mi)
-					columnIndices.append(i)
-
-				zipped = []
-				for i,j in zip(rowIndices, columnIndices):
-					zipped.append((i,j))
+			if move in self.possibleMovesRight(curPos[0],curPos[1]):
+				rowIndices = [move[0] for i in range(curPos[1] + 1, move[1])]
+				columnIndices = [i for i in range(curPos[1] + 1, move[1])]
+				zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
 				if len(zipped) > 0:
-					for zipMove in zipped:
-						zi, zj = zipMove
-						movesOccupied.append(isinstance(board[zi][zj], NoType))
+					movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 					if all(move for move in movesOccupied):
 						takeableMovesRight.append(move)
 				else:
-					if not isinstance(board[mi][mj], NoType):
+					if not isinstance(board[move[0]][move[1]], NoType):
 						takeableMovesRight.append(move)	
 
 				movesOccupied = []; rowIndices = []; columnIndices = []
@@ -569,25 +464,18 @@ class Knight(ChessPiece):
 		return possibleMoves
 
 	def legalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		ci,cj = curPos
-		legalMoves = []
-		possibleMoves = self.possibleMoves(ci, cj)
-		for move in possibleMoves:
-			r, c = move
-			if isinstance(board[r][c], NoType):
-				legalMoves.append(move)
+		possibleMoves = self.possibleMoves(curPos[0],curPos[1])
+		legalMoves = [move for move in possibleMoves if isinstance(board[move[0]][move[1]], NoType)]
 
 		return legalMoves
 
 	def takeableMoves(self, curPos, newPos, board):
-		ci,cj = curPos
 		takeableMoves = []
-		possibleMoves = self.possibleMoves(ci,cj)
+		possibleMoves = self.possibleMoves(curPos[0],curPos[1])
 		for move in possibleMoves:
-			r, c = move
-			if not isinstance(board[r][c], NoType):
-				if board[r][c].color() != board[ci][cj].color():
-					takeableMoves.append((r,c))
+			if not isinstance(board[move[0]][move[1]], NoType):
+				if board[move[0]][move[1]].color() != board[curPos[0]][curPos[1]].color():
+					takeableMoves.append(move)
 
 		return list(set(takeableMoves))
 
@@ -615,13 +503,9 @@ class Bishop(ChessPiece):
 			   self.possibleMovesRightDown(r,c) 
 
 	def possibleMovesLeftUp(self, r, c):
-		possibleMoves = []
+		possibleMoves = []; rowsDone = []; columnsDone = []
 		possibleRowsToGoUp = r
 		possibleColumnsToGoLeft = c
-
-		# Diagonal left up
-		rowsDone = []
-		columnsDone = []
 		for i in range(possibleRowsToGoUp, -1, -1):
 			for j in range(possibleColumnsToGoLeft, -1, -1):
 				if possibleRowsToGoUp - possibleColumnsToGoLeft <= i < possibleRowsToGoUp and \
@@ -636,17 +520,13 @@ class Bishop(ChessPiece):
 		return list(set(possibleMoves))
 
 	def possibleMovesRightUp(self, r, c):
-		possibleMoves = []
+		possibleMoves = []; rowsDone = []; columnsDone = []
 		possibleRowsToGoUp = r
 		possibleColumnsToGoRight = 7 - c
-
-		# Diagonal right up
-		rowsDone = []
-		columnsDone = []
 		for i in range(possibleRowsToGoUp, -1, -1):
 			for j in range(c, 8):
 				if possibleRowsToGoUp - possibleColumnsToGoRight <= i < possibleRowsToGoUp and \
-					c < j <=c + possibleColumnsToGoRight and i not in rowsDone and j not in columnsDone:
+					c < j <= c + possibleColumnsToGoRight and i not in rowsDone and j not in columnsDone:
 						possibleMoves.append((i, j))
 						rowsDone.append(i)
 						columnsDone.append(j)
@@ -657,13 +537,9 @@ class Bishop(ChessPiece):
 		return list(set(possibleMoves))
 
 	def possibleMovesLeftDown(self, r, c):
-		possibleMoves = []
+		possibleMoves = []; rowsDone = []; columnsDone = []
 		possibleRowsToGoDown = 7 - r
 		possibleColumnsToGoLeft = c
-
-		# Diagonal left down
-		rowsDone = []
-		columnsDone = []
 		for i in range(r, 8):
 			for j in range(possibleColumnsToGoLeft, -1, -1):
 				if r < i <= r + possibleRowsToGoDown and j < possibleColumnsToGoLeft and \
@@ -678,11 +554,7 @@ class Bishop(ChessPiece):
 		return list(set(possibleMoves))
 
 	def possibleMovesRightDown(self, r, c):
-		possibleMoves = []
-		
-		# Diagonal right down
-		rowsDone = []
-		columnsDone = []
+		possibleMoves = []; rowsDone = []; columnsDone = []
 		for i in range(r, 8):
 			for j in range(c, 8):
 				if i not in rowsDone and j not in columnsDone:
@@ -702,33 +574,19 @@ class Bishop(ChessPiece):
 			   self.legalMovesAndNotBlockedInPathRightDown(curPos, newPos, board)
 
 	def legalMovesAndNotBlockedInPathLeftUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Diagonal left up
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesLeftUp(ci,cj)
+			newPositions = self.possibleMovesLeftUp(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			for i in range(ci-1, mi, -1):
-				rowIndices.append(i)
-			for j in range(cj-1, mj, -1): 
-				columnIndices.append(j)
-
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+			columnIndices = [j for j in range(curPos[1] - 1, move[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 			zipped.append(move)
 
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -739,33 +597,19 @@ class Bishop(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathRightUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Diagonal right up
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesRightUp(ci,cj)
+			newPositions = self.possibleMovesRightUp(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			for i in range(ci-1, mi, -1):
-				rowIndices.append(i)
-			for j in range(mj, cj, -1): 
-				columnIndices.append(j)
-			
-			zipped = []
-			for i,j in zip(rowIndices, reversed(columnIndices)):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+			columnIndices = [j for j in range(move[1], curPos[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, reversed(columnIndices))]
 			zipped.append(move)
 			
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 			
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -776,33 +620,19 @@ class Bishop(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathLeftDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
-		movesOccupied = []
+		path = []; rowIndices = []; columnIndices = []; newPositions = []; movesOccupied = []
 
-		# Diagonal left down
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesLeftDown(ci,cj)
+			newPositions = self.possibleMovesLeftDown(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			for i in range(mi - 1, ci, -1):
-				rowIndices.append(i)
-			for j in range(cj - 1, mj, -1): 
-				columnIndices.append(j)
-
-			zipped = []
-			for i,j in zip(rowIndices, reversed(columnIndices)):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(move[0] - 1, curPos[0], -1)]
+			columnIndices = [j for j in range(curPos[1] - 1, move[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, reversed(columnIndices))]
 			zipped.append(move)
 
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -813,32 +643,18 @@ class Bishop(ChessPiece):
 		return list(set(path))
 
 	def legalMovesAndNotBlockedInPathRightDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		path = []
-		movesOccupied = []
-		rowIndices = []
-		columnIndices = []
-		newPositions = []
+		path = []; movesOccupied = []; rowIndices = []; columnIndices = []; newPositions = []
 
-		# Diagonal right down
 		if newPos:
 			newPositions.append(newPos)
 		else:
-			newPositions = self.possibleMovesRightDown(ci,cj)
+			newPositions = self.possibleMovesRightDown(curPos[0],curPos[1])
 		for move in newPositions:
-			mi, mj = move
-			for i in range(mi, ci, -1):
-				rowIndices.append(i)
-			for j in range(mj, cj, -1): 
-				columnIndices.append(j)
+			rowIndices = [i for i in range(move[0], curPos[0], -1)]
+			columnIndices = [j for j in range(move[1], curPos[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
-
-			for zipMove in zipped:
-				zi, zj = zipMove
-				movesOccupied.append(isinstance(board[zi][zj], NoType))
+			movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 
 			if all(move for move in movesOccupied):
 				path.append(move)
@@ -855,149 +671,97 @@ class Bishop(ChessPiece):
 			   self.takeableMovesRightDown(curPos, newPos, board)
 
 	def takeableMovesLeftUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		takeableMovesLeftUp = []
-		takeableMovesLeftUpTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		takeableMovesLeftUp = []; takeableMovesLeftUpTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
-		possibleMovesLeftUp = self.possibleMovesLeftUp(ci,cj)
+		possibleMovesLeftUp = self.possibleMovesLeftUp(curPos[0],curPos[1])
 		for move in possibleMovesLeftUp:
-			mi, mj = move
-			if not isinstance(board[mi][mj], NoType) and self.color() != board[mi][mj].color():
+			if not isinstance(board[move[0]][move[1]], NoType) and self.color() != board[move[0]][move[1]].color():
 				takeableMovesLeftUpTemp.append(move)
 
 		for move in takeableMovesLeftUpTemp:
-			mi, mj = move
-			for i in range(ci - 1, mi, -1):
-				rowIndices.append(i)
-			for j in range(cj - 1, mj, -1): 
-				columnIndices.append(j)
-
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+			columnIndices = [j for j in range(curPos[1] - 1, move[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
 			if len(zipped) > 0:
-				for zipMove in zipped:
-					zi, zj = zipMove
-					movesOccupied.append(isinstance(board[zi][zj], NoType))
+				movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 				if all(move for move in movesOccupied):
 					takeableMovesLeftUp.append(move)
-			else:
-				if not isinstance(board[mi][mj], NoType):
-					takeableMovesLeftUp.append(move)
+			elif not isinstance(board[move[0]][move[1]], NoType):
+				takeableMovesLeftUp.append(move)
+
 			movesOccupied = []; rowIndices = []; columnIndices = []
 		
 		return list(set(takeableMovesLeftUp))
 
 	def takeableMovesRightUp(self, curPos, newPos, board):
-		ci, cj = curPos
-		takeableMovesRightUp = []
-		takeableMovesRightUpTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		takeableMovesRightUp = []; takeableMovesRightUpTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
-		possibleMovesRightUp = self.possibleMovesRightUp(ci,cj)
+		possibleMovesRightUp = self.possibleMovesRightUp(curPos[0],curPos[1])
 		for move in possibleMovesRightUp:
-			mi, mj = move
-			if not isinstance(board[mi][mj], NoType) and self.color() != board[mi][mj].color():
+			if not isinstance(board[move[0]][move[1]], NoType) and self.color() != board[move[0]][move[1]].color():
 				takeableMovesRightUpTemp.append(move)
 
 		for move in takeableMovesRightUpTemp:
-			mi, mj = move
-			for i in range(ci - 1, mi, -1):
-				rowIndices.append(i)
-			for j in range(cj + 1, mj): 
-				columnIndices.append(j)
+			rowIndices = [i for i in range(curPos[0] - 1, move[0], -1)]
+			columnIndices = [j for j in range(curPos[1] + 1, move[1])]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
 			if len(zipped) > 0:
-				for zipMove in zipped:
-					zi, zj = zipMove
-					movesOccupied.append(isinstance(board[zi][zj], NoType))
+				movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 				if all(move for move in movesOccupied):
 					takeableMovesRightUp.append(move)
-			else:
-				if not isinstance(board[mi][mj], NoType):
-					takeableMovesRightUp.append(move)
+			elif not isinstance(board[move[0]][move[1]], NoType):
+				takeableMovesRightUp.append(move)
+
 			movesOccupied = []; rowIndices = []; columnIndices = []
 		
 		return list(set(takeableMovesRightUp))
 
 	def takeableMovesLeftDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		takeableMovesLeftDown = []
-		takeableMovesLeftDownTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		takeableMovesLeftDown = []; takeableMovesLeftDownTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
-		possibleMovesLeftDown = self.possibleMovesLeftDown(ci,cj)
+		possibleMovesLeftDown = self.possibleMovesLeftDown(curPos[0],curPos[1])
 		for move in possibleMovesLeftDown:
-			mi, mj = move
-			if not isinstance(board[mi][mj], NoType) and self.color() != board[mi][mj].color():
+			if not isinstance(board[move[0]][move[1]], NoType) and self.color() != board[move[0]][move[1]].color():
 				takeableMovesLeftDownTemp.append(move)
 		
 		for move in takeableMovesLeftDownTemp:
-			mi, mj = move
-			for i in range(mi - 1, ci - 1, -1):
-				rowIndices.append(i)
-			for j in range(cj - 1, mj, -1): 
-				columnIndices.append(j)
-			zipped = []
-			for i,j in zip(rowIndices, reversed(columnIndices)):
-				zipped.append((i,j))
+			rowIndices = [i for i in range(move[0] - 1, curPos[0] - 1, -1)]
+			columnIndices = [j for j in range(curPos[1] - 1, move[1], -1)]
+			zipped = [(i,j) for i,j in zip(rowIndices, reversed(columnIndices))]
+			
 			if len(zipped) > 0:
-				for zipMove in zipped:
-					zi, zj = zipMove
-					movesOccupied.append(isinstance(board[zi][zj], NoType))
+				movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 				if all(move for move in movesOccupied):
 					takeableMovesLeftDown.append(move)
-			else:
-				if not isinstance(board[mi][mj], NoType):
-					takeableMovesLeftDown.append(move)
+			elif not isinstance(board[move[0]][move[1]], NoType):
+				takeableMovesLeftDown.append(move)
+
 			movesOccupied = []; rowIndices = []; columnIndices = []
 		
 		return list(set(takeableMovesLeftDown))
 	
 	def takeableMovesRightDown(self, curPos, newPos, board):
-		ci, cj = curPos
-		takeableMovesRightDown = []
-		takeableMovesRightDownTemp = []
-		rowIndices = []
-		columnIndices = []
-		movesOccupied = []
+		takeableMovesRightDown = []; takeableMovesRightDownTemp = []; rowIndices = []; columnIndices = []; movesOccupied = []
 
-		possibleMovesRightDown = self.possibleMovesRightDown(ci,cj)
+		possibleMovesRightDown = self.possibleMovesRightDown(curPos[0],curPos[1])
 		for move in possibleMovesRightDown:
-			mi, mj = move
-			if not isinstance(board[mi][mj], NoType) and self.color() != board[mi][mj].color():
+			if not isinstance(board[move[0]][move[1]], NoType) and self.color() != board[move[0]][move[1]].color():
 				takeableMovesRightDownTemp.append(move)
 		
 		for move in takeableMovesRightDownTemp:
-			mi, mj = move
-			for i in range(ci + 1, mi):
-				rowIndices.append(i)
-			for j in range(cj + 1, mj): 
-				columnIndices.append(j)
+			rowIndices = [i	for i in range(curPos[0] + 1, move[0])]
+			columnIndices = [j for j in range(curPos[1] + 1, move[1])]
+			zipped = [(i,j) for i,j in zip(rowIndices, columnIndices)]
 
-			zipped = []
-			for i,j in zip(rowIndices, columnIndices):
-				zipped.append((i,j))
 			if len(zipped) > 0:
-				for zipMove in zipped:
-					zi, zj = zipMove
-					movesOccupied.append(isinstance(board[zi][zj], NoType))
+				movesOccupied = [isinstance(board[zipMove[0]][zipMove[1]], NoType) for zipMove in zipped]
 				if all(move for move in movesOccupied):
 					takeableMovesRightDown.append(move)
-			else:
-				if not isinstance(board[mi][mj], NoType):
-					takeableMovesRightDown.append(move)
+			elif not isinstance(board[move[0]][move[1]], NoType):
+				takeableMovesRightDown.append(move)
+
 			movesOccupied = []; rowIndices = []; columnIndices = []
 
 		return list(set(takeableMovesRightDown))
@@ -1079,8 +843,7 @@ class King(ChessPiece):
 		return list(set(possibleMoves))
 
 	def legalMovesAndNotBlockedInPath(self, curPos, newPos, board):
-		ci, cj = curPos
-		temp = self.possibleMoves(ci, cj)
+		temp = self.possibleMoves(curPos[0], curPos[1])
 		path = []
 		for move in temp:
 			r, c = move
@@ -1090,14 +853,13 @@ class King(ChessPiece):
 		return list(set(path))
 
 	def takeableMoves(self, curPos, newPos, board):
-		ci,cj = curPos
 		takeableMoves = []
-		temp = self.possibleMoves(ci, cj)
+		temp = self.possibleMoves(curPos[0], curPos[1])
 
 		for move in temp:
 			r, c = move
 			if not isinstance(board[r][c], NoType):
-				if board[r][c].color() != board[ci][cj].color():
+				if board[r][c].color() != board[curPos[0]][curPos[1]].color():
 					takeableMoves.append((r,c))
 
 		return list(set(takeableMoves))
